@@ -27,8 +27,8 @@ class AdminStaffController extends Controller
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
             });
         }
 
@@ -75,12 +75,12 @@ class AdminStaffController extends Controller
             'role' => $validated['role'],
             'status' => $validated['status'] ?? 'active',
             'password' => $hashedPassword,
-            'avatar' => 'https://ui-avatars.com/api/?name=' . urlencode($validated['name']) . '&background=36135d&color=fff',
+            'avatar' => 'https://ui-avatars.com/api/?name='.urlencode($validated['name']).'&background=36135d&color=fff',
         ]);
 
         ActivityLog::record(
             'CREATE_ADMIN',
-            "Created administrator '{$admin->name}' ({$admin->email}) with role " . strtoupper($admin->role),
+            "Created administrator '{$admin->name}' ({$admin->email}) with role ".strtoupper($admin->role),
             'Admin',
             $admin->id,
             $request->user(),
@@ -125,20 +125,20 @@ class AdminStaffController extends Controller
             'status' => $validated['status'] ?? $admin->status,
         ];
 
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $updateData['password'] = Hash::make($validated['password']);
         }
 
         $admin->update($updateData);
 
         // Sign out existing sessions when access is revoked or the password changes.
-        if ($admin->status !== 'active' || !empty($validated['password'])) {
+        if ($admin->status !== 'active' || ! empty($validated['password'])) {
             $admin->tokens()->delete();
         }
 
         ActivityLog::record(
             'UPDATE_ADMIN',
-            "Updated administrator '{$admin->name}' (Role: " . strtoupper($admin->role) . ", Status: " . strtoupper($admin->status) . ")",
+            "Updated administrator '{$admin->name}' (Role: ".strtoupper($admin->role).', Status: '.strtoupper($admin->status).')',
             'Admin',
             $admin->id,
             $request->user(),

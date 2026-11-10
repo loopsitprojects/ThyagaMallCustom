@@ -22,12 +22,13 @@ class AdminProductController extends Controller
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('sku', 'like', "%{$search}%");
+                    ->orWhere('sku', 'like', "%{$search}%");
             });
         }
 
         if ($categoryId = $request->query('category_id')) {
-            $query->where('category_id', $categoryId);
+            $category = Category::find($categoryId);
+            $query->whereIn('category_id', $category ? $category->selfAndDescendantIds() : [(int) $categoryId]);
         }
 
         if ($merchantId = $request->query('merchant_id')) {
@@ -64,13 +65,13 @@ class AdminProductController extends Controller
             'sku' => 'nullable|string|max:50',
             'short_description' => 'nullable|string',
             'description' => 'nullable|string',
-            'image_url' => 'nullable|url',
+            'image_url' => 'nullable|string|max:500',
             'is_featured' => 'boolean',
             'is_active' => 'boolean',
         ]);
 
-        $slug = Str::slug($validated['name']) . '-' . Str::random(5);
-        $sku = !empty($validated['sku']) ? $validated['sku'] : 'THY-' . strtoupper(Str::random(6));
+        $slug = Str::slug($validated['name']).'-'.Str::random(5);
+        $sku = ! empty($validated['sku']) ? $validated['sku'] : 'THY-'.strtoupper(Str::random(6));
 
         $product = Product::create([
             'name' => $validated['name'],
@@ -87,7 +88,7 @@ class AdminProductController extends Controller
             'is_active' => $validated['is_active'] ?? true,
         ]);
 
-        if (!empty($validated['image_url'])) {
+        if (! empty($validated['image_url'])) {
             ProductImage::create([
                 'product_id' => $product->id,
                 'image_url' => $validated['image_url'],
@@ -126,14 +127,14 @@ class AdminProductController extends Controller
             'sku' => 'nullable|string|max:50',
             'short_description' => 'nullable|string',
             'description' => 'nullable|string',
-            'image_url' => 'nullable|url',
+            'image_url' => 'nullable|string|max:500',
             'is_featured' => 'boolean',
             'is_active' => 'boolean',
         ]);
 
         $product->update($validated);
 
-        if (!empty($validated['image_url'])) {
+        if (! empty($validated['image_url'])) {
             $primaryImg = $product->images()->where('is_primary', true)->first();
             if ($primaryImg) {
                 $primaryImg->update(['image_url' => $validated['image_url']]);
@@ -190,12 +191,13 @@ class AdminProductController extends Controller
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('sku', 'like', "%{$search}%");
+                    ->orWhere('sku', 'like', "%{$search}%");
             });
         }
 
         if ($categoryId = $request->query('category_id')) {
-            $query->where('category_id', $categoryId);
+            $category = Category::find($categoryId);
+            $query->whereIn('category_id', $category ? $category->selfAndDescendantIds() : [(int) $categoryId]);
         }
 
         if ($merchantId = $request->query('merchant_id')) {
@@ -203,7 +205,7 @@ class AdminProductController extends Controller
         }
 
         $products = $query->latest()->get();
-        $filename = 'thyaga_products_' . date('Y-m-d') . '.csv';
+        $filename = 'thyaga_products_'.date('Y-m-d').'.csv';
 
         $headers = [
             'Content-Type' => 'text/csv; charset=utf-8',
@@ -349,7 +351,7 @@ class AdminProductController extends Controller
                 }
 
                 $header = fgetcsv($handle);
-                if (!$header) {
+                if (! $header) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Empty CSV file provided',
@@ -359,11 +361,12 @@ class AdminProductController extends Controller
                 $cleanHeaders = array_map(function ($h) {
                     $cleaned = strtolower(trim($h));
                     $cleaned = preg_replace('/[^a-z0-9_]/', '_', $cleaned);
+
                     return trim(preg_replace('/_+/', '_', $cleaned), '_');
                 }, $header);
 
                 while (($data = fgetcsv($handle)) !== false) {
-                    if (empty(array_filter($data, fn($v) => trim($v) !== ''))) {
+                    if (empty(array_filter($data, fn ($v) => trim($v) !== ''))) {
                         continue;
                     }
                     $row = [];
@@ -395,8 +398,8 @@ class AdminProductController extends Controller
         $skipped = 0;
         $errors = [];
 
-        $categoriesMap = Category::all()->keyBy(fn($c) => strtolower($c->name));
-        $merchantsMap = Merchant::all()->keyBy(fn($m) => strtolower($m->name));
+        $categoriesMap = Category::all()->keyBy(fn ($c) => strtolower($c->name));
+        $merchantsMap = Merchant::all()->keyBy(fn ($m) => strtolower($m->name));
         $defaultCategory = Category::first();
 
         DB::beginTransaction();
@@ -408,10 +411,11 @@ class AdminProductController extends Controller
                 if (empty($name)) {
                     $errors[] = "Row {$rowNum}: Missing product name";
                     $skipped++;
+
                     continue;
                 }
 
-                $sku = !empty($row['sku']) ? trim($row['sku']) : null;
+                $sku = ! empty($row['sku']) ? trim($row['sku']) : null;
                 $regularPrice = isset($row['regular_price']) ? floatval(preg_replace('/[^0-9.]/', '', $row['regular_price'])) : null;
                 if ($regularPrice === null || $regularPrice <= 0) {
                     $regularPrice = isset($row['price']) ? floatval(preg_replace('/[^0-9.]/', '', $row['price'])) : null;
@@ -419,10 +423,11 @@ class AdminProductController extends Controller
                 if ($regularPrice === null || $regularPrice <= 0) {
                     $errors[] = "Row {$rowNum} ('{$name}'): Invalid regular price";
                     $skipped++;
+
                     continue;
                 }
 
-                $salePrice = !empty($row['sale_price']) ? floatval(preg_replace('/[^0-9.]/', '', $row['sale_price'])) : null;
+                $salePrice = ! empty($row['sale_price']) ? floatval(preg_replace('/[^0-9.]/', '', $row['sale_price'])) : null;
                 $stockQuantity = isset($row['stock_quantity']) ? intval(preg_replace('/[^0-9]/', '', $row['stock_quantity'])) : 50;
 
                 // Category lookup
@@ -446,7 +451,7 @@ class AdminProductController extends Controller
                         }
                     }
                 }
-                if (!$categoryId && $defaultCategory) {
+                if (! $categoryId && $defaultCategory) {
                     $categoryId = $defaultCategory->id;
                 }
 
@@ -467,8 +472,8 @@ class AdminProductController extends Controller
                 $shortDesc = $row['short_description'] ?? null;
                 $description = $row['description'] ?? null;
                 $imageUrl = $row['image_url'] ?? $row['image'] ?? null;
-                $isFeatured = !empty($row['is_featured']) && in_array(strval($row['is_featured']), ['1', 'true', 'yes'], true);
-                $isActive = !isset($row['is_active']) || in_array(strval($row['is_active']), ['1', 'true', 'yes'], true);
+                $isFeatured = ! empty($row['is_featured']) && in_array(strval($row['is_featured']), ['1', 'true', 'yes'], true);
+                $isActive = ! isset($row['is_active']) || in_array(strval($row['is_active']), ['1', 'true', 'yes'], true);
 
                 $existingProduct = null;
                 if ($sku) {
@@ -490,7 +495,7 @@ class AdminProductController extends Controller
                             'is_active' => $isActive,
                         ]);
 
-                        if (!empty($imageUrl)) {
+                        if (! empty($imageUrl)) {
                             $primary = $existingProduct->images()->where('is_primary', true)->first();
                             if ($primary) {
                                 $primary->update(['image_url' => $imageUrl]);
@@ -507,8 +512,8 @@ class AdminProductController extends Controller
                         $skipped++;
                     }
                 } else {
-                    $finalSku = $sku ?: 'THY-' . strtoupper(Str::random(6));
-                    $slug = Str::slug($name) . '-' . Str::random(5);
+                    $finalSku = $sku ?: 'THY-'.strtoupper(Str::random(6));
+                    $slug = Str::slug($name).'-'.Str::random(5);
 
                     $product = Product::create([
                         'name' => $name,
@@ -525,7 +530,7 @@ class AdminProductController extends Controller
                         'is_active' => $isActive,
                     ]);
 
-                    if (!empty($imageUrl)) {
+                    if (! empty($imageUrl)) {
                         ProductImage::create([
                             'product_id' => $product->id,
                             'image_url' => $imageUrl,
@@ -557,10 +562,181 @@ class AdminProductController extends Controller
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error during import: ' . $e->getMessage(),
+                'message' => 'Error during import: '.$e->getMessage(),
             ], 500);
         }
+    }
+
+    public function bulkPricing(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'product_ids' => 'required_without:select_all_matching|array',
+            'product_ids.*' => 'integer|exists:products,id',
+            'select_all_matching' => 'nullable|boolean',
+            'filters' => 'nullable|array',
+            'filters.search' => 'nullable|string',
+            'filters.category_id' => 'nullable|integer',
+            'filters.merchant_id' => 'nullable|integer',
+            'filters.brand_id' => 'nullable|integer',
+            'filters.stock_status' => 'nullable|string',
+            'target' => 'required|string|in:discount,regular_price,both',
+            // Regular price adjustment
+            'regular_action' => 'nullable|string|in:increase_percent,decrease_percent,increase_flat,decrease_flat,set_exact',
+            'regular_value' => 'nullable|numeric|min:0',
+            // Discount / sale price adjustment
+            'discount_action' => 'nullable|string|in:set_percent,set_flat_discount,set_sale_price,clear_discount',
+            'discount_value' => 'nullable|numeric|min:0',
+            // Rounding:
+            'round_to' => 'nullable|string|in:none,1,10,50,100',
+            // When regular price changes, what to do with existing sale price:
+            'sale_price_handling' => 'nullable|string|in:keep_discount_percent,keep_sale_price,remove_sale_price',
+        ]);
+
+        $query = Product::query();
+
+        if (! empty($validated['select_all_matching'])) {
+            $filters = $validated['filters'] ?? [];
+            if (! empty($filters['search'])) {
+                $search = $filters['search'];
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('sku', 'like', "%{$search}%");
+                });
+            }
+            if (! empty($filters['category_id'])) {
+                $category = Category::find($filters['category_id']);
+                $query->whereIn('category_id', $category ? $category->selfAndDescendantIds() : [(int) $filters['category_id']]);
+            }
+            if (! empty($filters['merchant_id'])) {
+                $query->where('merchant_id', $filters['merchant_id']);
+            }
+            if (! empty($filters['brand_id'])) {
+                $query->where('brand_id', $filters['brand_id']);
+            }
+            if (($filters['stock_status'] ?? '') === 'low') {
+                $query->where('stock_quantity', '<=', 5);
+            }
+        } else {
+            $query->whereIn('id', $validated['product_ids'] ?? []);
+        }
+
+        $products = $query->get();
+
+        if ($products->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No products found to update.',
+            ], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $updatedCount = 0;
+            $roundTo = $validated['round_to'] ?? 'none';
+
+            foreach ($products as $p) {
+                $oldRegular = (float) $p->regular_price;
+                $oldSale = $p->sale_price !== null ? (float) $p->sale_price : null;
+                $newRegular = $oldRegular;
+                $newSale = $oldSale;
+
+                // 1. Regular price adjustment
+                if (in_array($validated['target'], ['regular_price', 'both'], true) && ! empty($validated['regular_action'])) {
+                    $regVal = (float) ($validated['regular_value'] ?? 0);
+                    $newRegular = match ($validated['regular_action']) {
+                        'increase_percent' => $oldRegular * (1 + ($regVal / 100)),
+                        'decrease_percent' => max(0, $oldRegular * (1 - ($regVal / 100))),
+                        'increase_flat' => $oldRegular + $regVal,
+                        'decrease_flat' => max(0, $oldRegular - $regVal),
+                        'set_exact' => max(0, $regVal),
+                        default => $oldRegular,
+                    };
+
+                    $newRegular = $this->applyRounding($newRegular, $roundTo);
+
+                    // If not explicitly setting discount action, handle existing discount:
+                    if ($validated['target'] === 'regular_price') {
+                        $handling = $validated['sale_price_handling'] ?? 'keep_discount_percent';
+                        if ($handling === 'remove_sale_price') {
+                            $newSale = null;
+                        } elseif ($handling === 'keep_discount_percent' && $oldSale !== null && $oldRegular > 0) {
+                            $discountRatio = ($oldRegular - $oldSale) / $oldRegular;
+                            if ($discountRatio > 0 && $discountRatio < 1) {
+                                $newSale = $this->applyRounding(max(0, $newRegular * (1 - $discountRatio)), $roundTo);
+                            } else {
+                                $newSale = null;
+                            }
+                        } elseif ($handling === 'keep_sale_price' && $oldSale !== null) {
+                            if ($oldSale >= $newRegular) {
+                                $newSale = null;
+                            }
+                        }
+                    }
+                }
+
+                // 2. Discount / Sale price adjustment
+                if (in_array($validated['target'], ['discount', 'both'], true) && ! empty($validated['discount_action'])) {
+                    $discVal = (float) ($validated['discount_value'] ?? 0);
+                    $newSale = match ($validated['discount_action']) {
+                        'set_percent' => max(0, $newRegular * (1 - ($discVal / 100))),
+                        'set_flat_discount' => max(0, $newRegular - $discVal),
+                        'set_sale_price' => max(0, $discVal),
+                        'clear_discount' => null,
+                        default => $newSale,
+                    };
+
+                    if ($newSale !== null) {
+                        $newSale = $this->applyRounding($newSale, $roundTo);
+                        if ($newSale >= $newRegular || $newSale <= 0) {
+                            $newSale = null;
+                        }
+                    }
+                }
+
+                $p->update([
+                    'regular_price' => $newRegular,
+                    'sale_price' => $newSale,
+                ]);
+                $updatedCount++;
+            }
+
+            DB::commit();
+
+            ActivityLog::record(
+                'BULK_PRICE_ADJUSTMENT',
+                "Bulk updated pricing on {$updatedCount} products (Target: {$validated['target']})",
+                'Product',
+                null,
+                $request->user(),
+                $request
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => "Successfully updated pricing for {$updatedCount} products.",
+                'updated_count' => $updatedCount,
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to apply bulk pricing: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function applyRounding(float $val, ?string $roundTo): float
+    {
+        return match ($roundTo) {
+            '1' => round($val),
+            '10' => round($val / 10) * 10,
+            '50' => round($val / 50) * 50,
+            '100' => round($val / 100) * 100,
+            default => round($val, 2),
+        };
     }
 }

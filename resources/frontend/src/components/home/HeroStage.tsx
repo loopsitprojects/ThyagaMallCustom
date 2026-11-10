@@ -41,7 +41,7 @@ export const DEFAULT_HERO_SLIDES: HeroSlide[] = [
 }));
 
 // Only site paths or https URLs are ever used as links (the API enforces this too).
-function safeLink(link: string): { href: string; external: boolean } {
+export function safeLink(link: string): { href: string; external: boolean } {
   if (/^\/(?!\/)/.test(link)) return { href: link, external: false };
   if (/^https:\/\//i.test(link)) return { href: link, external: true };
   return { href: '/shop', external: false };

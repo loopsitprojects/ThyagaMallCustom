@@ -46,6 +46,7 @@ class FlashSaleItem extends Model
         if ($this->product && $this->product->regular_price > 0 && $this->flash_price < $this->product->regular_price) {
             return (int) round((($this->product->regular_price - $this->flash_price) / $this->product->regular_price) * 100);
         }
+
         return null;
     }
 
@@ -56,7 +57,10 @@ class FlashSaleItem extends Model
 
     public function getPercentageSoldAttribute(): int
     {
-        if ($this->quantity_limit <= 0) return 0;
+        if ($this->quantity_limit <= 0) {
+            return 0;
+        }
+
         return (int) min(100, round(($this->quantity_sold / $this->quantity_limit) * 100));
     }
 }

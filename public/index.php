@@ -6,6 +6,7 @@ error_reporting(E_ALL);
 
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
+use Illuminate\View\ViewServiceProvider;
 
 define('LARAVEL_START', microtime(true));
 
@@ -18,7 +19,7 @@ if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php'))
 require __DIR__.'/../vendor/autoload.php';
 
 // Polyfill for PHP < 8.4 for Symfony HttpFoundation Request::createFromGlobals
-if (!function_exists('request_parse_body')) {
+if (! function_exists('request_parse_body')) {
     function request_parse_body(): array
     {
         return [$_POST ?? [], $_FILES ?? []];
@@ -39,7 +40,7 @@ foreach ([
     __DIR__.'/../storage/framework/views',
     __DIR__.'/../storage/logs',
 ] as $storageDir) {
-    if (!is_dir($storageDir)) {
+    if (! is_dir($storageDir)) {
         @mkdir($storageDir, 0777, true);
     }
 }
@@ -51,7 +52,7 @@ try {
 
     // Ensure view factory is bound for error rendering
     if (! $app->bound('view')) {
-        $app->register(\Illuminate\View\ViewServiceProvider::class);
+        $app->register(ViewServiceProvider::class);
     }
 
     // Normalize subfolder prefix if hosted under /ThyagaMall/api
@@ -62,7 +63,7 @@ try {
     }
 
     $app->handleRequest(Request::capture());
-} catch (\Throwable $e) {
+} catch (Throwable $e) {
     header('Content-Type: application/json', true, 500);
     echo json_encode([
         'error' => true,

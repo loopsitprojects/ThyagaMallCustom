@@ -110,7 +110,7 @@ function LogoLabels() {
       {LABEL_FACES.map(({ position, rotationY }) => (
         <mesh key={rotationY} position={position} rotation={[0, rotationY, 0]}>
           <planeGeometry args={[LABEL_WIDTH, LABEL_HEIGHT]} />
-          <meshStandardMaterial map={texture} emissiveMap={texture} emissive="#ffffff" emissiveIntensity={0.35} transparent roughness={0.45} metalness={0} polygonOffset polygonOffsetFactor={-2} />
+          <meshBasicMaterial map={texture} transparent toneMapped={false} polygonOffset polygonOffsetFactor={-2} />
         </mesh>
       ))}
     </>

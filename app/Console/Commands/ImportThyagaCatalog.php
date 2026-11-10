@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
 class ImportThyagaCatalog extends Command
 {
     protected $signature = 'thyaga:import-catalog';
+
     protected $description = 'Import real products and categories from thyaga_wp into the Thyaga Mall database';
 
     public function handle()
@@ -25,8 +26,8 @@ class ImportThyagaCatalog extends Command
 
         // 1. Create the default admin only if missing — never reset an existing password.
         $admin = Admin::where('email', 'admin@thyaga.lk')->first();
-        if (!$admin) {
-            $initialPassword = \Illuminate\Support\Str::password(16);
+        if (! $admin) {
+            $initialPassword = Str::password(16);
             $admin = Admin::create([
                 'email' => 'admin@thyaga.lk',
                 'name' => 'Thyaga Mall Admin',
@@ -72,10 +73,10 @@ class ImportThyagaCatalog extends Command
                 'is_active' => true,
             ]
         );
-        $this->info("Default Vouchers seeded.");
+        $this->info('Default Vouchers seeded.');
 
         // 3. Import Categories from thyaga_wp
-        $this->info("Importing Categories from thyaga_wp...");
+        $this->info('Importing Categories from thyaga_wp...');
         try {
             $wpCategories = DB::select("
                 SELECT t.term_id, t.name, t.slug, tt.parent, tt.description
@@ -120,10 +121,10 @@ class ImportThyagaCatalog extends Command
                     $catMap[$cat->term_id] = $category->id;
                 }
             }
-            $this->info("Imported " . count($catMap) . " categories.");
+            $this->info('Imported '.count($catMap).' categories.');
 
             // 4. Import Products from thyaga_wp
-            $this->info("Importing Products from thyaga_wp...");
+            $this->info('Importing Products from thyaga_wp...');
             $wpProducts = DB::select("
                 SELECT p.ID, p.post_title, p.post_name, p.post_content, p.post_excerpt,
                        pm_price.meta_value as price,
@@ -168,7 +169,7 @@ class ImportThyagaCatalog extends Command
                     [
                         'category_id' => $categoryId,
                         'name' => html_entity_decode($wpP->post_title),
-                        'sku' => $wpP->sku ?: 'THY-' . $wpP->ID,
+                        'sku' => $wpP->sku ?: 'THY-'.$wpP->ID,
                         'short_description' => strip_tags($wpP->post_excerpt ?: ''),
                         'description' => $wpP->post_content ?: $wpP->post_excerpt,
                         'regular_price' => $regularPrice,
@@ -184,7 +185,7 @@ class ImportThyagaCatalog extends Command
 
                 // Check thumbnail image
                 if ($wpP->thumb_id) {
-                    $imgRow = DB::selectOne("SELECT guid FROM thyaga_wp.wp_posts WHERE ID = ?", [$wpP->thumb_id]);
+                    $imgRow = DB::selectOne('SELECT guid FROM thyaga_wp.wp_posts WHERE ID = ?', [$wpP->thumb_id]);
                     if ($imgRow && $imgRow->guid) {
                         $imgUrl = str_replace('http://store.thyaga.lk/', 'https://mall.thyaga.lk/', $imgRow->guid);
                         ProductImage::updateOrCreate(
@@ -201,7 +202,7 @@ class ImportThyagaCatalog extends Command
             $this->info("Imported {$importedCount} real products.");
 
             // 5. Create ⚡ Flash Sale Campaign
-            $this->info("Creating ⚡ Flash Sale Event...");
+            $this->info('Creating ⚡ Flash Sale Event...');
             $flashSale = FlashSale::updateOrCreate(
                 ['title' => '⚡ Mega 24H Flash Deals'],
                 [
@@ -237,13 +238,14 @@ class ImportThyagaCatalog extends Command
                     'sort_order' => $sort++,
                 ]);
             }
-            $this->info("⚡ Flash Sale populated with " . count($flashProducts) . " items.");
+            $this->info('⚡ Flash Sale populated with '.count($flashProducts).' items.');
 
         } catch (\Exception $e) {
-            $this->error("Error importing catalog: " . $e->getMessage());
+            $this->error('Error importing catalog: '.$e->getMessage());
         }
 
-        $this->info("Thyaga Mall setup & import complete!");
+        $this->info('Thyaga Mall setup & import complete!');
+
         return Command::SUCCESS;
     }
 }

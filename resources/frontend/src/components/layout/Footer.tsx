@@ -6,13 +6,16 @@ import Image from 'next/image';
 import { MapPin, Phone, Mail, ShieldCheck, Lock } from 'lucide-react';
 import { getAssetUrl } from '@/utils/assets';
 import { useFlashSale } from '@/context/FlashSaleContext';
+import { useCategories, categoryHref } from '@/hooks/useCategories';
 
 export default function Footer() {
   const { isActive } = useFlashSale();
+  const { categories } = useCategories();
+  const menuCategories = categories.filter((c) => c.show_in_menu);
   return (
     <footer className="hidden md:block bg-[#150d22] text-gray-300 mt-12 border-t-2 border-[#36135d]">
       {/* Main 5-Column Grid */}
-      <div className="max-w-7xl mx-auto px-4 py-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 text-xs">
+      <div className="max-w-site mx-auto px-4 lg:px-6 py-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 text-xs">
         {/* Col 1: Brand Info (span 4) */}
         <div className="lg:col-span-4 space-y-3">
           {/* Official Logo Card */}
@@ -76,9 +79,11 @@ export default function Footer() {
             <li>
               <Link href="/shop?sort=newest" className="hover:text-white transition">New Arrivals</Link>
             </li>
-            <li>
-              <Link href="/shop?category=gift-cards" className="hover:text-white transition">Gift Cards</Link>
-            </li>
+            {menuCategories.map((cat) => (
+              <li key={cat.id}>
+                <Link href={categoryHref(cat)} className="hover:text-white transition">{cat.name}</Link>
+              </li>
+            ))}
             <li>
               <Link href="/shop?view=brands" className="hover:text-white transition">Brand Store</Link>
             </li>
@@ -95,29 +100,16 @@ export default function Footer() {
               <Link href="/track-order" className="hover:text-white transition">Track Your Order</Link>
             </li>
             <li>
-              <a href="https://mall.thyaga.lk/return-policy/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">
-                Returns &amp; Refunds
-              </a>
+              <Link href="/returns" className="hover:text-white transition">Returns &amp; Refunds</Link>
             </li>
             <li>
-              <a href="https://mall.thyaga.lk/faq/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">
-                Shipping Information
-              </a>
+              <Link href="/shipping" className="hover:text-white transition">Shipping Information</Link>
             </li>
             <li>
-              <Link href="/faq" className="hover:text-white transition">
-                FAQs
-              </Link>
+              <Link href="/faq" className="hover:text-white transition">FAQs</Link>
             </li>
             <li>
-              <a href="https://mall.thyaga.lk/contact/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">
-                Help Center
-              </a>
-            </li>
-            <li>
-              <a href="https://mall.thyaga.lk/contact/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">
-                Contact Us
-              </a>
+              <Link href="/contact" className="hover:text-white transition">Contact Us</Link>
             </li>
           </ul>
         </div>
@@ -129,34 +121,13 @@ export default function Footer() {
           </h4>
           <ul className="space-y-2 text-[11px] text-gray-400">
             <li>
-              <a href="https://mall.thyaga.lk/about-us/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">
-                Our Story
-              </a>
+              <Link href="/about" className="hover:text-white transition">Our Story</Link>
             </li>
             <li>
-              <a href="https://mall.thyaga.lk/sell-on-thyaga/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">
-                Sell on Thayaga Mall
-              </a>
+              <Link href="/terms" className="hover:text-white transition">Terms &amp; Conditions</Link>
             </li>
             <li>
-              <a href="https://thyaga.lk" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">
-                Careers
-              </a>
-            </li>
-            <li>
-              <a href="https://mall.thyaga.lk" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">
-                Blog
-              </a>
-            </li>
-            <li>
-              <a href="https://mall.thyaga.lk/terms-conditions/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">
-                Terms &amp; Conditions
-              </a>
-            </li>
-            <li>
-              <a href="https://mall.thyaga.lk/privacy-policy/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">
-                Privacy Policy
-              </a>
+              <Link href="/privacy" className="hover:text-white transition">Privacy Policy</Link>
             </li>
           </ul>
         </div>
@@ -209,7 +180,7 @@ export default function Footer() {
 
       {/* Bottom Bar */}
       <div className="bg-[#0e0818] py-4 border-t border-purple-950 text-gray-400 text-[11px]">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+        <div className="max-w-site mx-auto px-4 lg:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
           <span>&copy; {new Date().getFullYear()} mall.thyaga.lk. All rights reserved.</span>
           <div className="flex items-center gap-4 text-[11px]">
             <Link href="/privacy" className="hover:text-white transition">

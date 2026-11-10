@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_FEE } from '@/utils/shipping';
 import { CartItem, Product } from '@/types';
 import { api } from '@/services/api';
 
@@ -35,8 +36,6 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const FREE_SHIPPING_THRESHOLD = 2999;
-const STANDARD_SHIPPING_FEE = 350;
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
@@ -138,12 +137,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const clearCart = () => {
+  // Stable identity: the order-success page clears the cart from an effect that depends on it.
+  const clearCart = useCallback(() => {
     setItems([]);
     setAppliedVoucher(null);
     localStorage.removeItem('thyaga_mall_cart');
     localStorage.removeItem('thyaga_mall_voucher');
-  };
+  }, []);
 
   const cartCount = items.reduce((acc, item) => acc + item.quantity, 0);
   const subtotal = items.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);

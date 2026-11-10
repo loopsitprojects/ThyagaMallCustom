@@ -21,11 +21,11 @@ class AdminMerchantController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%")
-                  ->orWhere('contact_person', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('city', 'like', "%{$search}%")
-                  ->orWhere('business_type', 'like', "%{$search}%");
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('contact_person', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('city', 'like', "%{$search}%")
+                    ->orWhere('business_type', 'like', "%{$search}%");
             });
         }
 
@@ -73,6 +73,7 @@ class AdminMerchantController extends Controller
         // All vs Paginated
         if ($request->input('all') === 'true' || $request->input('per_page') === 'all') {
             $merchants = $query->get();
+
             return response()->json([
                 'success' => true,
                 'stats' => $stats,
@@ -143,8 +144,10 @@ class AdminMerchantController extends Controller
         // Auto-generate code if empty
         if (empty($validated['code'])) {
             $prefix = strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $validated['name']), 0, 3));
-            if (strlen($prefix) < 3) $prefix = 'MER';
-            $validated['code'] = "MER-{$prefix}-" . rand(100, 999);
+            if (strlen($prefix) < 3) {
+                $prefix = 'MER';
+            }
+            $validated['code'] = "MER-{$prefix}-".rand(100, 999);
         }
 
         // Default logo if empty
@@ -259,7 +262,7 @@ class AdminMerchantController extends Controller
         $merchant = Merchant::findOrFail($id);
         $newStatus = $request->input('status');
 
-        if (!$newStatus) {
+        if (! $newStatus) {
             $newStatus = $merchant->status === 'active' ? 'inactive' : 'active';
         }
 
@@ -268,7 +271,7 @@ class AdminMerchantController extends Controller
         if ($request->user()) {
             ActivityLog::record(
                 'UPDATE_MERCHANT_STATUS',
-                "Changed status of merchant '{$merchant->name}' to " . strtoupper($newStatus),
+                "Changed status of merchant '{$merchant->name}' to ".strtoupper($newStatus),
                 'Merchant',
                 $merchant->id,
                 $request->user(),

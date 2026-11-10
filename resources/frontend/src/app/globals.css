@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Shared storefront width (max-w-site): wide enough for large desktop screens */
+@theme {
+  --container-site: 100rem;
+}
+
 @layer base {
   :root {
     --primary: #36135d;

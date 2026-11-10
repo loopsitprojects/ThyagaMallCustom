@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Api\Payment;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendOrderPlacedEmails;
 use App\Models\Order;
+use App\Services\ThyagaVoucherService;
 use App\Services\WebxpayService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -26,7 +27,7 @@ class WebxpayController extends Controller
     {
         $order = Order::where('order_number', $orderNumber)->first();
 
-        if (!$order) {
+        if (! $order) {
             return response()->json([
                 'success' => false,
                 'message' => 'Order not found',
@@ -68,9 +69,10 @@ class WebxpayController extends Controller
             $order = Order::where('order_number', $orderNumber)->first();
         }
 
-        if (!$order) {
-            Log::error('WebXpay Callback: Order not found for reference ' . ($orderNumber ?: 'empty'));
+        if (! $order) {
+            Log::error('WebXpay Callback: Order not found for reference '.($orderNumber ?: 'empty'));
             $fallbackUrl = $this->webxpayService->getFrontendRedirectUrl('', false, 'Order reference not recognized');
+
             return redirect()->away($fallbackUrl);
         }
 
@@ -83,18 +85,21 @@ class WebxpayController extends Controller
             $order->update([
                 'payment_status' => 'paid',
                 'order_status' => $order->order_status === 'pending' ? 'processing' : $order->order_status,
-                'notes' => trim(($order->notes ? $order->notes . "\n" : '') . "[WebXpay Transaction ID: {$result['transaction_id']}]"),
+                'notes' => trim(($order->notes ? $order->notes."\n" : '')."[WebXpay Transaction ID: {$result['transaction_id']}]"),
             ]);
 
             // Finalize / burn held Thyāga voucher if applied
-            if (!empty($order->voucher_redemption_id)) {
-                $voucherService = app(\App\Services\ThyagaVoucherService::class);
+            if (! empty($order->voucher_redemption_id)) {
+                $voucherService = app(ThyagaVoucherService::class);
                 if ($voucherService->isConfigured()) {
                     $voucherService->completeRedemption($order->voucher_redemption_id, $order->order_number);
                 }
             }
 
+            SendOrderPlacedEmails::dispatchAfterResponse($order);
+
             $successUrl = $this->webxpayService->getFrontendRedirectUrl($order->order_number, true);
+
             return redirect()->away($successUrl);
         }
 
@@ -103,6 +108,7 @@ class WebxpayController extends Controller
         Log::warning('WebXpay payment not confirmed', ['order_number' => $order->order_number, 'message' => $result['message']]);
 
         $failedUrl = $this->webxpayService->getFrontendRedirectUrl($order->order_number, false, $result['message']);
+
         return redirect()->away($failedUrl);
     }
 }

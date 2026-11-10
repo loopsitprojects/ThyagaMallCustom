@@ -16,14 +16,17 @@ use Illuminate\Support\Str;
 class ImportCsvProducts extends Command
 {
     protected $signature = 'thyaga:import-csv {file? : Path to the CSV file}';
+
     protected $description = 'Remove all existing products and import the full product catalog from the specified CSV file';
 
     public function handle()
     {
         $filePath = $this->argument('file');
-        if (!$filePath) {
+        if (! $filePath) {
             $defaultPaths = [
-                base_path('../database_dump/Products-Export-2026-October-22-1422.csv'),
+                base_path('database_dump/Products-Export-2026-October-29-1357.csv'),
+                base_path('database_dump/Products-Export-2026-October-22-1422.csv'),
+                '/Users/dilmith/Downloads/Products-Export-2026-October-29-1357.csv',
                 '/Users/dilmith/Downloads/Products-Export-2026-October-22-1422.csv',
             ];
             foreach ($defaultPaths as $p) {
@@ -34,18 +37,19 @@ class ImportCsvProducts extends Command
             }
         }
 
-        if (!$filePath || !file_exists($filePath)) {
+        if (! $filePath || ! file_exists($filePath)) {
             $this->error("CSV file not found at: {$filePath}");
+
             return Command::FAILURE;
         }
 
-        $this->info("==========================================================");
-        $this->info("🚀 Starting Clean Product Catalog Import from CSV");
+        $this->info('==========================================================');
+        $this->info('🚀 Starting Clean Product Catalog Import from CSV');
         $this->info("File: {$filePath}");
-        $this->info("==========================================================");
+        $this->info('==========================================================');
 
         // 1. Wipe existing products and dependent table data cleanly
-        $this->info("🧹 Step 1: Removing all existing products and images...");
+        $this->info('🧹 Step 1: Removing all existing products and images...');
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         DB::table('order_items')->update(['product_id' => null]);
         DB::table('flash_sale_items')->truncate();
@@ -53,26 +57,27 @@ class ImportCsvProducts extends Command
         DB::table('reviews')->truncate();
         DB::table('products')->truncate();
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-        $this->info("✅ Previous products wiped.");
+        $this->info('✅ Previous products wiped.');
 
         // 2. Ensure Categories exist with hierarchy
-        $this->info("📂 Step 2: Ensuring category hierarchy exists...");
+        $this->info('📂 Step 2: Ensuring category hierarchy exists...');
         $categoriesMap = $this->ensureCategories();
-        $this->info("✅ Categories ready. Total registered: " . count($categoriesMap));
+        $this->info('✅ Categories ready. Total registered: '.count($categoriesMap));
 
         // 3. Ensure Brands exist
-        $this->info("🏷️ Step 3: Ensuring brands exist...");
+        $this->info('🏷️ Step 3: Ensuring brands exist...');
         $brandsMap = $this->ensureBrands();
-        $this->info("✅ Brands ready: " . implode(', ', array_keys($brandsMap)));
+        $this->info('✅ Brands ready: '.implode(', ', array_keys($brandsMap)));
 
         // 4. Cache Merchants
         $merchantsMap = Merchant::all()->keyBy('id');
 
         // 5. Read CSV and import
-        $this->info("📦 Step 4: Parsing and importing products from CSV...");
+        $this->info('📦 Step 4: Parsing and importing products from CSV...');
         $handle = fopen($filePath, 'r');
-        if (!$handle) {
+        if (! $handle) {
             $this->error("Failed to open CSV file: {$filePath}");
+
             return Command::FAILURE;
         }
 
@@ -82,10 +87,11 @@ class ImportCsvProducts extends Command
             rewind($handle);
         }
 
-        $headers = fgetcsv($handle);
-        if (!$headers) {
-            $this->error("Empty CSV file headers.");
+        $headers = fgetcsv($handle, 0, ',', '"', '\\');
+        if (! $headers) {
+            $this->error('Empty CSV file headers.');
             fclose($handle);
+
             return Command::FAILURE;
         }
 
@@ -99,10 +105,13 @@ class ImportCsvProducts extends Command
         $slugLookup = [];
         $createdProducts = [];
 
+        $this->info('Parsing rows...');
         DB::beginTransaction();
         try {
-            while (($row = fgetcsv($handle)) !== false) {
-                if (empty(array_filter($row, fn($v) => trim($v) !== ''))) {
+            $rowNum = 0;
+            while (($row = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
+                $rowNum++;
+                if (empty(array_filter($row, fn ($v) => trim($v) !== ''))) {
                     continue;
                 }
 
@@ -117,13 +126,13 @@ class ImportCsvProducts extends Command
 
                 // Ensure unique slug
                 if (isset($slugLookup[$slug])) {
-                    $slug = $slug . '-' . ($wooId ?: Str::random(4));
+                    $slug = $slug.'-'.($wooId ?: Str::random(4));
                 }
                 $slugLookup[$slug] = true;
                 $allSlugs[] = $slug;
 
                 $rawSku = trim($row[$headerMap['Sku'] ?? -1] ?? '');
-                $sku = $rawSku ?: ($wooId ? 'THY-' . $wooId : 'THY-' . strtoupper(Str::random(6)));
+                $sku = $rawSku ?: ($wooId ? 'THY-'.$wooId : 'THY-'.strtoupper(Str::random(6)));
 
                 $regPriceRaw = $row[$headerMap['Regular Price'] ?? -1] ?? '';
                 $priceRaw = $row[$headerMap['Price'] ?? -1] ?? '';
@@ -160,7 +169,7 @@ class ImportCsvProducts extends Command
 
                 // Brand Resolution
                 $brandCol = trim($row[$headerMap['Brands'] ?? -1] ?? '');
-                $brandId = !empty($brandCol) ? ($brandsMap[strtolower($brandCol)] ?? null) : null;
+                $brandId = ! empty($brandCol) ? ($brandsMap[strtolower($brandCol)] ?? null) : null;
 
                 // Merchant Assignment (heuristic based on categories and brands)
                 $merchantId = $this->resolveMerchantId($categoryId, $brandCol);
@@ -208,14 +217,14 @@ class ImportCsvProducts extends Command
                     $parts = explode('|', $galleryImgs);
                     foreach ($parts as $url) {
                         $normalized = $this->normalizeImageUrl(trim($url));
-                        if ($normalized && !in_array($normalized, $images, true)) {
+                        if ($normalized && ! in_array($normalized, $images, true)) {
                             $images[] = $normalized;
                         }
                     }
                 }
 
                 // Insert Product Images
-                if (!empty($images)) {
+                if (! empty($images)) {
                     $imgRecords = [];
                     foreach ($images as $order => $imgUrl) {
                         $imgRecords[] = [
@@ -247,29 +256,31 @@ class ImportCsvProducts extends Command
         } catch (\Throwable $e) {
             fclose($handle);
             DB::rollBack();
-            $this->error("Error importing products: " . $e->getMessage());
+            $this->error('Error importing products: '.$e->getMessage());
+            $this->line('<fg=red>ERROR: '.$e->getMessage().' in '.$e->getFile().':'.$e->getLine().'</>');
+
             return Command::FAILURE;
         }
 
         // 6. Populate ⚡ Flash Sale with 12 real discounted items
-        $this->info("⚡ Step 5: Setting up 24H Flash Deals campaign with imported catalog...");
+        $this->info('⚡ Step 5: Setting up 24H Flash Deals campaign with imported catalog...');
         $this->setupFlashSale($createdProducts);
 
         // 7. Update resources/frontend/src/data/product-slugs.json
-        $this->info("📄 Step 6: Updating product-slugs.json for Next.js SSG...");
+        $this->info('📄 Step 6: Updating product-slugs.json for Next.js SSG...');
         $slugsFile = resource_path('frontend/src/data/product-slugs.json');
         if (file_exists($slugsFile) || is_dir(dirname($slugsFile))) {
             $finalSlugs = array_merge(['[slug]'], $allSlugs);
             file_put_contents($slugsFile, json_encode($finalSlugs, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-            $this->info("✅ Wrote " . count($finalSlugs) . " slugs to resources/frontend/src/data/product-slugs.json");
+            $this->info('✅ Wrote '.count($finalSlugs).' slugs to resources/frontend/src/data/product-slugs.json');
         }
 
-        $this->info("==========================================================");
-        $this->info("✨ CATALOG IMPORT COMPLETED SUCCESSFULLY!");
-        $this->info("Total Products in Store: " . Product::count());
-        $this->info("Total Product Images: " . ProductImage::count());
-        $this->info("Total Categories: " . Category::count());
-        $this->info("==========================================================");
+        $this->info('==========================================================');
+        $this->info('✨ CATALOG IMPORT COMPLETED SUCCESSFULLY!');
+        $this->info('Total Products in Store: '.Product::count());
+        $this->info('Total Product Images: '.ProductImage::count());
+        $this->info('Total Categories: '.Category::count());
+        $this->info('==========================================================');
 
         return Command::SUCCESS;
     }
@@ -285,6 +296,7 @@ class ImportCsvProducts extends Command
             if (preg_match_all('/<p[^>]*>(.*?)<\/p>/is', $text, $matches)) {
                 return implode(' ', array_map('trim', $matches[1]));
             }
+
             return trim(strip_tags($text));
         }
 
@@ -293,9 +305,23 @@ class ImportCsvProducts extends Command
 
     private function normalizeImageUrl(string $url): string
     {
-        if (empty($url)) return '';
-        // Upgrade http://mall.thyaga.lk to https://mall.thyaga.lk
-        return preg_replace('/^http:\/\//i', 'https://', $url);
+        $url = trim($url);
+        if (empty($url)) {
+            return '';
+        }
+
+        $clean = preg_replace('/[?#].*$/', '', $url);
+        $lastSlash = strrpos($clean, '/');
+        if ($lastSlash === false) {
+            return '';
+        }
+
+        $filename = rawurldecode(substr($clean, $lastSlash + 1));
+        if (empty($filename)) {
+            return '';
+        }
+
+        return '/uploads/'.$filename;
     }
 
     private function ensureCategories(): array
@@ -377,6 +403,10 @@ class ImportCsvProducts extends Command
         }
 
         // Subcategory aliases
+        $lookup['gift'] = $categoryModels['gifts']->id;
+        $lookup['gifts'] = $categoryModels['gifts']->id;
+        $lookup['gift>hamper'] = $categoryModels['hamper']->id;
+        $lookup['gifts>hamper'] = $categoryModels['hamper']->id;
         $lookup['home>kitchen'] = $categoryModels['kitchen']->id;
         $lookup['home>living'] = $categoryModels['living']->id;
         $lookup['electronics>appliances'] = $categoryModels['appliances']->id;
@@ -442,6 +472,7 @@ class ImportCsvProducts extends Command
             'Buldak' => 'buldak',
             'Abans' => 'abans',
             'suriyas' => 'suriyas',
+            'Surya ProShield' => 'surya-proshield',
         ];
 
         $map = [];
@@ -478,6 +509,7 @@ class ImportCsvProducts extends Command
         if ($categoryId === 7 || $categoryId === 8) { // Kitchen / Living
             return 6; // Damro
         }
+
         return null;
     }
 
@@ -486,7 +518,7 @@ class ImportCsvProducts extends Command
         $flashSale = FlashSale::updateOrCreate(
             ['title' => '⚡ Mega 24H Flash Deals'],
             [
-                'banner_url' => 'https://mall.thyaga.lk/wp-content/uploads/2026/06/Thyaga_mall_logo_LOGO_LOGO-1.png',
+                'banner_url' => '/banners/hero_slide_1.jpg',
                 'start_time' => now()->subHours(2),
                 'end_time' => now()->addHours(22),
                 'is_active' => true,
@@ -494,7 +526,7 @@ class ImportCsvProducts extends Command
         );
 
         // Pick 12 items that have regular_price >= 500
-        $eligible = array_filter($products, fn($p) => $p['regular_price'] >= 500);
+        $eligible = array_filter($products, fn ($p) => $p['regular_price'] >= 500);
         if (count($eligible) < 12) {
             $eligible = $products;
         }
@@ -519,6 +551,6 @@ class ImportCsvProducts extends Command
                 'sort_order' => $sort++,
             ]);
         }
-        $this->info("⚡ Flash Sale populated with " . count($selected) . " items.");
+        $this->info('⚡ Flash Sale populated with '.count($selected).' items.');
     }
 }

@@ -24,8 +24,8 @@ class AdminUserController extends Controller
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
             });
         }
 
@@ -38,6 +38,7 @@ class AdminUserController extends Controller
             $userArray = $u->toArray();
             $userArray['orders_count'] = $orderCount;
             $userArray['total_spent'] = $totalSpent;
+
             return $userArray;
         });
 
@@ -118,7 +119,7 @@ class AdminUserController extends Controller
             'status' => $validated['status'] ?? $user->status,
         ];
 
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $updateData['password'] = Hash::make($validated['password']);
         }
 
@@ -126,7 +127,7 @@ class AdminUserController extends Controller
 
         ActivityLog::record(
             'UPDATE_CUSTOMER',
-            "Updated customer profile for '{$user->name}' (Status: " . strtoupper($user->status) . ")",
+            "Updated customer profile for '{$user->name}' (Status: ".strtoupper($user->status).')',
             'Customer',
             $user->id,
             $request->user(),

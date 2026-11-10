@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
 import {
   Package,
@@ -19,9 +19,17 @@ import {
   FileSpreadsheet,
   AlertCircle,
   CheckCircle2,
+  Percent,
+  TrendingUp,
+  Tag,
+  SlidersHorizontal,
+  Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 import { api } from '@/services/api';
 import { Product, Category, Merchant } from '@/types';
+import { flattenCategoryTree } from '@/hooks/useCategories';
+import { getAssetUrl } from '@/utils/assets';
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -32,6 +40,21 @@ export default function AdminProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>();
   const [selectedMerchant, setSelectedMerchant] = useState<number | undefined>();
   const [isLoading, setIsLoading] = useState(true);
+
+  // Multi-Selection State
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [selectAllMatching, setSelectAllMatching] = useState(false);
+
+  // Bulk Pricing Modal State
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [bulkTarget, setBulkTarget] = useState<'discount' | 'regular_price' | 'both'>('discount');
+  const [bulkRegularAction, setBulkRegularAction] = useState<'increase_percent' | 'decrease_percent' | 'increase_flat' | 'decrease_flat' | 'set_exact'>('increase_percent');
+  const [bulkRegularValue, setBulkRegularValue] = useState<string>('10');
+  const [bulkDiscountAction, setBulkDiscountAction] = useState<'set_percent' | 'set_flat_discount' | 'set_sale_price' | 'clear_discount'>('set_percent');
+  const [bulkDiscountValue, setBulkDiscountValue] = useState<string>('15');
+  const [bulkRoundTo, setBulkRoundTo] = useState<'none' | '1' | '10' | '50' | '100'>('1');
+  const [bulkSaleHandling, setBulkSaleHandling] = useState<'keep_discount_percent' | 'keep_sale_price' | 'remove_sale_price'>('keep_discount_percent');
+  const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
 
   // Export State
   const [isExporting, setIsExporting] = useState(false);
@@ -97,10 +120,10 @@ export default function AdminProductsPage() {
 
   useEffect(() => {
     const token = localStorage.getItem('thyaga_admin_token') || '';
-    api.getCategories().then((res) => {
-      if (res.success) setCategories(res.data);
-    });
     if (token) {
+      api.getAdminCategories(token).then((res) => {
+        if (res.success) setCategories(res.data);
+      });
       api.getAdminMerchants(token, { all: true }).then((res) => {
         if (res.success) setMerchants(res.data);
       });
@@ -111,6 +134,207 @@ export default function AdminProductsPage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     fetchProducts(1);
+  };
+
+  // Selection helpers
+  const isProductSelected = (id: number) => selectAllMatching || selectedIds.includes(id);
+
+  const allPageSelected = useMemo(() => {
+    return products.length > 0 && products.every((p) => selectedIds.includes(p.id));
+  }, [products, selectedIds]);
+
+  const somePageSelected = useMemo(() => {
+    return products.some((p) => selectedIds.includes(p.id)) && !allPageSelected;
+  }, [products, selectedIds, allPageSelected]);
+
+  const selectedCount = selectAllMatching ? pagination.total : selectedIds.length;
+
+  const toggleSelectAllPage = () => {
+    if (allPageSelected || selectAllMatching) {
+      setSelectedIds((prev) => prev.filter((id) => !products.some((p) => p.id === id)));
+      setSelectAllMatching(false);
+    } else {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...products.map((p) => p.id)])));
+    }
+  };
+
+  const toggleSelectProduct = (id: number) => {
+    if (selectAllMatching) {
+      setSelectAllMatching(false);
+      setSelectedIds(products.map((p) => p.id).filter((pid) => pid !== id));
+    } else {
+      setSelectedIds((prev) =>
+        prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      );
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedIds([]);
+    setSelectAllMatching(false);
+  };
+
+  const selectAllMatchingItems = () => {
+    setSelectAllMatching(true);
+    setSelectedIds(products.map((p) => p.id));
+  };
+
+  const openBulkModal = (target: 'discount' | 'regular_price' | 'both' = 'discount') => {
+    if (selectedCount === 0 && products.length > 0) {
+      setSelectedIds(products.map((p) => p.id));
+    }
+    setBulkTarget(target);
+    setIsBulkModalOpen(true);
+  };
+
+  // Live calculation preview
+  const calculateNewPrices = (regularPrice: number, salePrice: number | null) => {
+    let newRegular = regularPrice;
+    let newSale = salePrice;
+
+    const roundVal = (v: number) => {
+      if (bulkRoundTo === '1') return Math.round(v);
+      if (bulkRoundTo === '10') return Math.round(v / 10) * 10;
+      if (bulkRoundTo === '50') return Math.round(v / 50) * 50;
+      if (bulkRoundTo === '100') return Math.round(v / 100) * 100;
+      return Math.round(v * 100) / 100;
+    };
+
+    // 1. Regular Price adjustment
+    if (bulkTarget === 'regular_price' || bulkTarget === 'both') {
+      const regVal = parseFloat(bulkRegularValue) || 0;
+      if (bulkRegularAction === 'increase_percent') {
+        newRegular = regularPrice * (1 + regVal / 100);
+      } else if (bulkRegularAction === 'decrease_percent') {
+        newRegular = Math.max(0, regularPrice * (1 - regVal / 100));
+      } else if (bulkRegularAction === 'increase_flat') {
+        newRegular = regularPrice + regVal;
+      } else if (bulkRegularAction === 'decrease_flat') {
+        newRegular = Math.max(0, regularPrice - regVal);
+      } else if (bulkRegularAction === 'set_exact') {
+        newRegular = Math.max(0, regVal);
+      }
+      newRegular = roundVal(newRegular);
+
+      if (bulkTarget === 'regular_price') {
+        if (bulkSaleHandling === 'remove_sale_price') {
+          newSale = null;
+        } else if (bulkSaleHandling === 'keep_discount_percent' && salePrice !== null && regularPrice > 0) {
+          const discountRatio = (regularPrice - salePrice) / regularPrice;
+          if (discountRatio > 0 && discountRatio < 1) {
+            newSale = roundVal(Math.max(0, newRegular * (1 - discountRatio)));
+          } else {
+            newSale = null;
+          }
+        } else if (bulkSaleHandling === 'keep_sale_price' && salePrice !== null) {
+          if (salePrice >= newRegular) {
+            newSale = null;
+          }
+        }
+      }
+    }
+
+    // 2. Discount adjustment
+    if (bulkTarget === 'discount' || bulkTarget === 'both') {
+      const discVal = parseFloat(bulkDiscountValue) || 0;
+      if (bulkDiscountAction === 'set_percent') {
+        newSale = Math.max(0, newRegular * (1 - discVal / 100));
+      } else if (bulkDiscountAction === 'set_flat_discount') {
+        newSale = Math.max(0, newRegular - discVal);
+      } else if (bulkDiscountAction === 'set_sale_price') {
+        newSale = Math.max(0, discVal);
+      } else if (bulkDiscountAction === 'clear_discount') {
+        newSale = null;
+      }
+
+      if (newSale !== null) {
+        newSale = roundVal(newSale);
+        if (newSale >= newRegular || newSale <= 0) {
+          newSale = null;
+        }
+      }
+    }
+
+    const discountPercent =
+      newSale !== null && newRegular > 0 && newSale < newRegular
+        ? Math.round(((newRegular - newSale) / newRegular) * 100)
+        : null;
+
+    return { newRegular, newSale, discountPercent };
+  };
+
+  const previewProducts = useMemo(() => {
+    if (selectedIds.length > 0) {
+      const matched = products.filter((p) => selectedIds.includes(p.id));
+      if (matched.length > 0) return matched.slice(0, 3);
+    }
+    return products.slice(0, 3);
+  }, [products, selectedIds]);
+
+  const handleApplyBulkPricing = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const token = localStorage.getItem('thyaga_admin_token') || '';
+    if (!token) {
+      alert('Admin session expired. Please sign in again.');
+      return;
+    }
+
+    const count = selectAllMatching ? pagination.total : selectedIds.length;
+    if (count === 0) {
+      alert('Please select at least one product to update.');
+      return;
+    }
+
+    if (count > 25 && !confirm(`Are you sure you want to update prices for ${count} products?`)) {
+      return;
+    }
+
+    setIsBulkSubmitting(true);
+    try {
+      const payload: any = {
+        target: bulkTarget,
+        round_to: bulkRoundTo,
+      };
+
+      if (selectAllMatching) {
+        payload.select_all_matching = true;
+        payload.filters = {
+          search: search || undefined,
+          category_id: selectedCategory,
+          merchant_id: selectedMerchant,
+        };
+      } else {
+        payload.product_ids = selectedIds;
+      }
+
+      if (bulkTarget === 'regular_price' || bulkTarget === 'both') {
+        payload.regular_action = bulkRegularAction;
+        payload.regular_value = parseFloat(bulkRegularValue) || 0;
+        if (bulkTarget === 'regular_price') {
+          payload.sale_price_handling = bulkSaleHandling;
+        }
+      }
+
+      if (bulkTarget === 'discount' || bulkTarget === 'both') {
+        payload.discount_action = bulkDiscountAction;
+        payload.discount_value = parseFloat(bulkDiscountValue) || 0;
+      }
+
+      const res = await api.bulkPricingAdminProducts(token, payload);
+      if (res.success) {
+        setFeedback(res.message || `Successfully updated ${res.updated_count} products.`);
+        setIsBulkModalOpen(false);
+        clearSelection();
+        fetchProducts(pagination.current_page);
+        setTimeout(() => setFeedback(null), 4000);
+      } else {
+        alert(res.message || 'Bulk pricing failed');
+      }
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to apply bulk pricing');
+    } finally {
+      setIsBulkSubmitting(false);
+    }
   };
 
   const openCreateModal = () => {
@@ -354,6 +578,17 @@ export default function AdminProductsPage() {
           <p className="text-xs text-gray-500">Manage {pagination.total || 400}+ real Thyaga Mall catalog items, prices & inventory</p>
         </div>
         <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Bulk Pricing Button */}
+          <button
+            type="button"
+            onClick={() => openBulkModal('discount')}
+            className="bg-purple-50 hover:bg-purple-100 text-[#36135d] border border-purple-200 text-xs font-bold px-3.5 py-2.5 rounded-xl transition flex items-center gap-2 shadow-2xs cursor-pointer"
+            title="Bulk adjust discounts and regular prices"
+          >
+            <Percent className="w-4 h-4 text-[#a7144c]" />
+            <span>Bulk Pricing & Discounts{selectedCount > 0 ? ` (${selectedCount})` : ''}</span>
+          </button>
+
           {/* Export CSV Button */}
           <button
             type="button"
@@ -433,9 +668,9 @@ export default function AdminProductsPage() {
               className="bg-gray-50 border border-gray-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-hidden"
             >
               <option value="">All Categories</option>
-              {categories.map((c) => (
+              {flattenCategoryTree(categories).map(({ category: c, depth }) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
+                  {'\u00A0\u00A0\u00A0'.repeat(depth)}{c.name}{c.is_active ? '' : ' (hidden)'}
                 </option>
               ))}
             </select>
@@ -459,8 +694,104 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
+      {/* Selection Action Banner */}
+      {selectedCount > 0 && (
+        <div className="bg-gradient-to-r from-[#36135d] via-[#4a187a] to-[#a7144c] text-white p-3.5 sm:p-4 rounded-2xl shadow-md flex flex-wrap items-center justify-between gap-3 animate-in fade-in duration-200">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+              <Tag className="w-5 h-5 text-pink-200" />
+            </div>
+            <div>
+              <div className="text-xs sm:text-sm font-black flex items-center gap-2">
+                <span>{selectedCount} product{selectedCount === 1 ? '' : 's'} selected</span>
+                {selectAllMatching ? (
+                  <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    All matching filtered catalog
+                  </span>
+                ) : (
+                  <span className="bg-white/15 text-purple-100 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                    Page selection
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-purple-200">
+                Bulk add discounts or increase regular prices for selected items
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => openBulkModal('discount')}
+              className="bg-white hover:bg-pink-50 text-[#36135d] font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+            >
+              <Percent className="w-3.5 h-3.5 text-[#a7144c]" />
+              <span>Add / Manage Discounts</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => openBulkModal('regular_price')}
+              className="bg-white/15 hover:bg-white/25 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 border border-white/20 cursor-pointer"
+            >
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-300" />
+              <span>Adjust Regular Prices</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => openBulkModal('both')}
+              className="bg-[#a7144c] hover:bg-[#85103c] text-white font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs border border-pink-400/40 cursor-pointer"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>Combined Pricing</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="text-purple-200 hover:text-white text-xs font-semibold px-2 py-1 transition cursor-pointer"
+            >
+              Deselect All
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Products Table */}
       <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden">
+        {/* Select-All-Matching Banner across entire catalog */}
+        {allPageSelected && pagination.total > products.length && (
+          <div className="bg-purple-50/90 border-b border-purple-200 px-4 py-2.5 text-xs text-[#36135d] flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 font-medium">
+              <CheckCircle2 className="w-4 h-4 text-[#36135d] shrink-0" />
+              <span>
+                {selectAllMatching
+                  ? `All ${pagination.total} products matching current filters are selected.`
+                  : `All ${products.length} products on this page are selected.`}
+              </span>
+            </div>
+            {!selectAllMatching ? (
+              <button
+                type="button"
+                onClick={selectAllMatchingItems}
+                className="text-[#a7144c] font-black underline hover:no-underline cursor-pointer"
+              >
+                Select all {pagination.total} products matching current filter
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={clearSelection}
+                className="text-gray-600 font-semibold underline hover:no-underline cursor-pointer"
+              >
+                Clear selection
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           {isLoading ? (
             <div className="p-16 flex flex-col items-center justify-center text-gray-400">
@@ -475,6 +806,18 @@ export default function AdminProductsPage() {
             <table className="w-full text-left text-xs">
               <thead className="bg-gray-50 text-gray-500 font-bold uppercase text-[10px] border-b border-gray-100">
                 <tr>
+                  <th className="p-3 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={allPageSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = somePageSelected;
+                      }}
+                      onChange={toggleSelectAllPage}
+                      className="w-4 h-4 rounded border-gray-300 text-[#36135d] focus:ring-[#36135d] cursor-pointer"
+                      title={allPageSelected ? 'Deselect all on this page' : 'Select all on this page'}
+                    />
+                  </th>
                   <th className="p-3 w-16">Image</th>
                   <th className="p-3">Product Name & SKU</th>
                   <th className="p-3">Category & Merchant</th>
@@ -485,68 +828,94 @@ export default function AdminProductsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {products.map((p) => (
-                  <tr key={p.id} className="hover:bg-gray-50/50 transition">
-                    <td className="p-3">
-                      <div className="relative w-10 h-10 bg-gray-100 rounded-md overflow-hidden border border-gray-200">
-                        <Image
-                          src={p.primary_image || 'https://placehold.co/100x100?text=Item'}
-                          alt=""
-                          fill
-                          className="object-cover"
+                {products.map((p) => {
+                  const isSelected = isProductSelected(p.id);
+                  const regNum = Number(p.regular_price);
+                  const saleNum =
+                    p.sale_price !== null && p.sale_price !== undefined ? Number(p.sale_price) : null;
+                  return (
+                    <tr
+                      key={p.id}
+                      className={`hover:bg-gray-50/70 transition ${
+                        isSelected ? 'bg-purple-50/60' : ''
+                      }`}
+                    >
+                      <td className="p-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelectProduct(p.id)}
+                          className="w-4 h-4 rounded border-gray-300 text-[#36135d] focus:ring-[#36135d] cursor-pointer"
                         />
-                      </div>
-                    </td>
-                    <td className="p-3 max-w-xs">
-                      <div className="font-bold text-gray-900 line-clamp-1">{p.name}</div>
-                      <div className="text-[10px] text-gray-400 font-mono">SKU: {p.sku || `THY-${p.id}`}</div>
-                    </td>
-                    <td className="p-3">
-                      <span className="bg-purple-50 text-[#36135d] font-semibold px-2 py-0.5 rounded text-[10px] inline-block mb-0.5">
-                        {p.category?.name || 'General'}
-                      </span>
-                      {p.merchant && (
-                        <div className="flex items-center gap-1 text-[10px] text-gray-500 font-medium">
-                          <Store className="w-2.5 h-2.5 text-gray-400 shrink-0" />
-                          <span className="truncate max-w-[120px]">{p.merchant.name}</span>
+                      </td>
+                      <td className="p-3">
+                        <div className="relative w-10 h-10 bg-gray-100 rounded-md overflow-hidden border border-gray-200">
+                          <Image
+                            src={getAssetUrl(p.primary_image || 'https://placehold.co/100x100?text=Item')}
+                            alt=""
+                            fill
+                            className="object-cover"
+                          />
                         </div>
-                      )}
-                    </td>
-                    <td className="p-3 font-semibold text-gray-700">
-                      Rs. {Number(p.regular_price).toLocaleString()}
-                    </td>
-                    <td className="p-3">
-                      {p.sale_price ? (
-                        <span className="text-[#a7144c] font-bold">
-                          Rs. {Number(p.sale_price).toLocaleString()}
+                      </td>
+                      <td className="p-3 max-w-xs">
+                        <div className="font-bold text-gray-900 line-clamp-1">{p.name}</div>
+                        <div className="text-[10px] text-gray-400 font-mono">SKU: {p.sku || `THY-${p.id}`}</div>
+                      </td>
+                      <td className="p-3">
+                        <span className="bg-purple-50 text-[#36135d] font-semibold px-2 py-0.5 rounded text-[10px] inline-block mb-0.5">
+                          {p.category?.name || 'General'}
                         </span>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="p-3">
-                      <span className={`font-bold ${p.stock_quantity <= 5 ? 'text-red-600' : 'text-emerald-700'}`}>
-                        {p.stock_quantity} units
-                      </span>
-                    </td>
-                    <td className="p-3 text-right space-x-1">
-                      <button
-                        onClick={() => openEditModal(p)}
-                        className="p-1.5 text-gray-600 hover:text-[#36135d] hover:bg-purple-50 rounded transition cursor-pointer"
-                        title="Edit Product"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(p.id)}
-                        className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition cursor-pointer"
-                        title="Delete Product"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                        {p.merchant && (
+                          <div className="flex items-center gap-1 text-[10px] text-gray-500 font-medium">
+                            <Store className="w-2.5 h-2.5 text-gray-400 shrink-0" />
+                            <span className="truncate max-w-[120px]">{p.merchant.name}</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-3 font-semibold text-gray-700">
+                        Rs. {regNum.toLocaleString()}
+                      </td>
+                      <td className="p-3">
+                        {saleNum !== null ? (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[#a7144c] font-bold">
+                              Rs. {saleNum.toLocaleString()}
+                            </span>
+                            {regNum > saleNum && (
+                              <span className="text-[9px] font-black bg-pink-50 text-[#a7144c] px-1.5 py-0.2 rounded border border-pink-200">
+                                {Math.round(((regNum - saleNum) / regNum) * 100)}% OFF
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        <span className={`font-bold ${p.stock_quantity <= 5 ? 'text-red-600' : 'text-emerald-700'}`}>
+                          {p.stock_quantity} units
+                        </span>
+                      </td>
+                      <td className="p-3 text-right space-x-1">
+                        <button
+                          onClick={() => openEditModal(p)}
+                          className="p-1.5 text-gray-600 hover:text-[#36135d] hover:bg-purple-50 rounded transition cursor-pointer"
+                          title="Edit Product"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(p.id)}
+                          className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition cursor-pointer"
+                          title="Delete Product"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -815,9 +1184,9 @@ export default function AdminProductsPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-hidden"
                   >
                     <option value="">Select Category</option>
-                    {categories.map((c) => (
+                    {flattenCategoryTree(categories).map(({ category: c, depth }) => (
                       <option key={c.id} value={c.id}>
-                        {c.name}
+                        {'\u00A0\u00A0\u00A0'.repeat(depth)}{c.name}{c.is_active ? '' : ' (hidden)'}
                       </option>
                     ))}
                   </select>
@@ -923,6 +1292,466 @@ export default function AdminProductsPage() {
                   className="px-5 py-2 bg-[#36135d] hover:bg-[#a7144c] text-white rounded-lg font-bold transition disabled:opacity-50"
                 >
                   {modalLoading ? 'Saving...' : 'Save Product'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Bulk Pricing & Discount Modal */}
+      {isBulkModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
+          <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden border border-gray-100 flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-[#36135d] via-[#4d1685] to-[#a7144c] text-white p-5 sm:p-6 flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center shrink-0">
+                  <Percent className="w-5 h-5 text-pink-200" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white">Bulk Price & Discount Manager</h3>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      {selectedCount} product{selectedCount === 1 ? '' : 's'} selected
+                    </span>
+                    <span className="text-purple-200 text-xs">
+                      {selectAllMatching ? 'Across entire matching catalog' : 'From current selection'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBulkModalOpen(false)}
+                className="text-white/70 hover:text-white p-1 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scope / Selection Notice */}
+            <div className="bg-purple-50/80 px-6 py-2.5 border-b border-purple-100 flex items-center justify-between text-xs text-[#36135d]">
+              <span className="font-medium">
+                {selectAllMatching
+                  ? `Applying to ALL ${pagination.total} products matching current search & category filters.`
+                  : `Applying to ${selectedIds.length} specifically selected product(s).`}
+              </span>
+              {pagination.total > selectedIds.length && (
+                <button
+                  type="button"
+                  onClick={() => setSelectAllMatching(!selectAllMatching)}
+                  className="text-[#a7144c] font-black underline hover:no-underline cursor-pointer"
+                >
+                  {selectAllMatching
+                    ? `Switch to page selection only (${selectedIds.length} items)`
+                    : `Apply to all ${pagination.total} items instead`}
+                </button>
+              )}
+            </div>
+
+            {/* Modal Content Form */}
+            <form onSubmit={handleApplyBulkPricing} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 text-xs">
+              {/* Tab Selector */}
+              <div>
+                <label className="block font-bold text-gray-700 uppercase tracking-wider text-[10px] mb-2">
+                  Select Action Mode
+                </label>
+                <div className="grid grid-cols-3 gap-2 bg-gray-100 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setBulkTarget('discount')}
+                    className={`py-2 px-3 rounded-lg font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                      bulkTarget === 'discount'
+                        ? 'bg-white text-[#36135d] shadow-xs'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Percent className="w-3.5 h-3.5 text-[#a7144c]" />
+                    <span>Add Discounts</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBulkTarget('regular_price')}
+                    className={`py-2 px-3 rounded-lg font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                      bulkTarget === 'regular_price'
+                        ? 'bg-white text-[#36135d] shadow-xs'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Regular Prices</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBulkTarget('both')}
+                    className={`py-2 px-3 rounded-lg font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                      bulkTarget === 'both'
+                        ? 'bg-white text-[#36135d] shadow-xs'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Combined (Dual)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 1. REGULAR PRICE SETTINGS (Shown in regular_price or both) */}
+              {(bulkTarget === 'regular_price' || bulkTarget === 'both') && (
+                <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-3">
+                  <div className="flex items-center gap-2 text-amber-900 font-bold text-xs border-b border-amber-200/60 pb-2">
+                    <TrendingUp className="w-4 h-4 text-amber-600" />
+                    <span>Regular Price Adjustment</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Adjustment Action</label>
+                      <select
+                        value={bulkRegularAction}
+                        onChange={(e) => setBulkRegularAction(e.target.value as any)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white font-medium focus:outline-hidden focus:border-[#36135d]"
+                      >
+                        <option value="increase_percent">Increase Regular Price by %</option>
+                        <option value="increase_flat">Increase Regular Price by flat Rs.</option>
+                        <option value="decrease_percent">Decrease Regular Price by %</option>
+                        <option value="decrease_flat">Decrease Regular Price by flat Rs.</option>
+                        <option value="set_exact">Set Exact Regular Price (Rs.)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">
+                        {bulkRegularAction.includes('percent')
+                          ? 'Percentage (%)'
+                          : 'Amount in Rs.'}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        required
+                        value={bulkRegularValue}
+                        onChange={(e) => setBulkRegularValue(e.target.value)}
+                        placeholder={bulkRegularAction.includes('percent') ? 'e.g. 10' : 'e.g. 500'}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white font-bold text-gray-900 focus:outline-hidden focus:border-[#36135d]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Regular Price Presets */}
+                  <div>
+                    <span className="text-[10px] text-gray-500 font-medium mr-2">Quick Presets:</span>
+                    <div className="inline-flex flex-wrap gap-1 mt-1">
+                      {bulkRegularAction.includes('percent') ? (
+                        ['5', '10', '12', '15', '20', '25'].map((val) => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => setBulkRegularValue(val)}
+                            className={`px-2 py-0.5 rounded text-[11px] font-bold border transition cursor-pointer ${
+                              bulkRegularValue === val
+                                ? 'bg-amber-600 text-white border-amber-600'
+                                : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
+                            }`}
+                          >
+                            +{val}%
+                          </button>
+                        ))
+                      ) : (
+                        ['50', '100', '250', '500', '1000', '2500'].map((val) => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => setBulkRegularValue(val)}
+                            className={`px-2 py-0.5 rounded text-[11px] font-bold border transition cursor-pointer ${
+                              bulkRegularValue === val
+                                ? 'bg-amber-600 text-white border-amber-600'
+                                : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
+                            }`}
+                          >
+                            +Rs. {Number(val).toLocaleString()}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Existing Sale Price Handling (only if not also setting new discount) */}
+                  {bulkTarget === 'regular_price' && (
+                    <div className="pt-2 border-t border-amber-200/50">
+                      <label className="block font-semibold text-gray-700 mb-1">
+                        How should existing promotional sale prices be handled?
+                      </label>
+                      <div className="space-y-1.5 mt-1">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="bulkSaleHandling"
+                            checked={bulkSaleHandling === 'keep_discount_percent'}
+                            onChange={() => setBulkSaleHandling('keep_discount_percent')}
+                            className="text-[#36135d] focus:ring-[#36135d]"
+                          />
+                          <span className="font-medium text-gray-700">
+                            Preserve discount % (scale sale price proportionally with new regular price)
+                          </span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="bulkSaleHandling"
+                            checked={bulkSaleHandling === 'keep_sale_price'}
+                            onChange={() => setBulkSaleHandling('keep_sale_price')}
+                            className="text-[#36135d] focus:ring-[#36135d]"
+                          />
+                          <span className="font-medium text-gray-700">
+                            Keep existing fixed sale price amount (if lower than new regular price)
+                          </span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="bulkSaleHandling"
+                            checked={bulkSaleHandling === 'remove_sale_price'}
+                            onChange={() => setBulkSaleHandling('remove_sale_price')}
+                            className="text-[#36135d] focus:ring-[#36135d]"
+                          />
+                          <span className="font-medium text-gray-700">
+                            Remove all sale prices (reset to regular price)
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 2. DISCOUNT / SALE PRICE SETTINGS (Shown in discount or both) */}
+              {(bulkTarget === 'discount' || bulkTarget === 'both') && (
+                <div className="p-4 rounded-2xl bg-pink-50/50 border border-pink-200/80 space-y-3">
+                  <div className="flex items-center gap-2 text-[#a7144c] font-bold text-xs border-b border-pink-200/60 pb-2">
+                    <Percent className="w-4 h-4 text-[#a7144c]" />
+                    <span>Discounts & Promotional Sale Pricing</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Discount Action</label>
+                      <select
+                        value={bulkDiscountAction}
+                        onChange={(e) => setBulkDiscountAction(e.target.value as any)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white font-medium focus:outline-hidden focus:border-[#36135d]"
+                      >
+                        <option value="set_percent">Percentage Discount (% OFF regular price)</option>
+                        <option value="set_flat_discount">Flat Discount (Rs. OFF regular price)</option>
+                        <option value="set_sale_price">Set Exact Sale Price (Rs.)</option>
+                        <option value="clear_discount">Clear / Remove Discounts (Remove sale price)</option>
+                      </select>
+                    </div>
+
+                    {bulkDiscountAction !== 'clear_discount' && (
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">
+                          {bulkDiscountAction === 'set_percent'
+                            ? 'Discount Percentage (%)'
+                            : 'Discount Amount / Price (Rs.)'}
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          required
+                          value={bulkDiscountValue}
+                          onChange={(e) => setBulkDiscountValue(e.target.value)}
+                          placeholder={bulkDiscountAction === 'set_percent' ? 'e.g. 15' : 'e.g. 1000'}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white font-bold text-gray-900 focus:outline-hidden focus:border-[#36135d]"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Discount Quick Presets */}
+                  {bulkDiscountAction !== 'clear_discount' && (
+                    <div>
+                      <span className="text-[10px] text-gray-500 font-medium mr-2">Quick Presets:</span>
+                      <div className="inline-flex flex-wrap gap-1 mt-1">
+                        {bulkDiscountAction === 'set_percent' ? (
+                          ['5', '10', '15', '20', '25', '30', '40', '50'].map((val) => (
+                            <button
+                              key={val}
+                              type="button"
+                              onClick={() => setBulkDiscountValue(val)}
+                              className={`px-2 py-0.5 rounded text-[11px] font-bold border transition cursor-pointer ${
+                                bulkDiscountValue === val
+                                  ? 'bg-[#a7144c] text-white border-[#a7144c]'
+                                  : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
+                              }`}
+                            >
+                              {val}% OFF
+                            </button>
+                          ))
+                        ) : (
+                          ['100', '250', '500', '1000', '2000', '5000'].map((val) => (
+                            <button
+                              key={val}
+                              type="button"
+                              onClick={() => setBulkDiscountValue(val)}
+                              className={`px-2 py-0.5 rounded text-[11px] font-bold border transition cursor-pointer ${
+                                bulkDiscountValue === val
+                                  ? 'bg-[#a7144c] text-white border-[#a7144c]'
+                                  : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
+                              }`}
+                            >
+                              Rs. {Number(val).toLocaleString()}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 3. ROUNDING OPTIONS */}
+              <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-200 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <span className="font-bold text-gray-800">Round Calculated Prices</span>
+                  <p className="text-[10px] text-gray-500">Auto-round new regular and promotional prices</p>
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {[
+                    { id: '1', label: 'Nearest Rs. 1' },
+                    { id: '10', label: 'Nearest Rs. 10' },
+                    { id: '50', label: 'Nearest Rs. 50' },
+                    { id: '100', label: 'Nearest Rs. 100' },
+                    { id: 'none', label: 'No Rounding' },
+                  ].map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => setBulkRoundTo(r.id as any)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                        bulkRoundTo === r.id
+                          ? 'bg-[#36135d] text-white border-[#36135d]'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                      }`}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 4. LIVE CALCULATION PREVIEW */}
+              <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-2xs">
+                <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-bold text-gray-800 text-[11px]">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Live Preview (Calculations for sample selected items)</span>
+                  </div>
+                  <span className="text-[10px] text-gray-500">Updates live as you type</span>
+                </div>
+
+                <div className="divide-y divide-gray-100">
+                  {previewProducts.length === 0 ? (
+                    <div className="p-4 text-center text-gray-400 text-xs">No sample products available.</div>
+                  ) : (
+                    previewProducts.map((p) => {
+                      const { newRegular, newSale, discountPercent } = calculateNewPrices(
+                        Number(p.regular_price),
+                        p.sale_price ? Number(p.sale_price) : null
+                      );
+                      const regDiff = newRegular - Number(p.regular_price);
+                      const regDiffPercent =
+                        Number(p.regular_price) > 0
+                          ? Math.round((regDiff / Number(p.regular_price)) * 100)
+                          : 0;
+
+                      return (
+                        <div key={p.id} className="p-3 flex flex-wrap items-center justify-between gap-2 hover:bg-gray-50/50">
+                          <div className="max-w-xs">
+                            <div className="font-bold text-gray-900 line-clamp-1">{p.name}</div>
+                            <div className="text-[10px] text-gray-400 font-mono">SKU: {p.sku || `THY-${p.id}`}</div>
+                          </div>
+
+                          <div className="flex items-center gap-4 text-right">
+                            {/* Regular Price change */}
+                            <div>
+                              <div className="text-[10px] text-gray-400">Regular Price</div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-gray-500 line-through">
+                                  Rs. {Number(p.regular_price).toLocaleString()}
+                                </span>
+                                <span className="font-bold text-gray-900">
+                                  → Rs. {newRegular.toLocaleString()}
+                                </span>
+                                {regDiff !== 0 && (
+                                  <span
+                                    className={`text-[9px] font-black px-1 rounded ${
+                                      regDiff > 0
+                                        ? 'bg-emerald-50 text-emerald-700'
+                                        : 'bg-red-50 text-red-700'
+                                    }`}
+                                  >
+                                    {regDiff > 0 ? `+${regDiffPercent}%` : `${regDiffPercent}%`}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Sale / Discount Price change */}
+                            <div>
+                              <div className="text-[10px] text-gray-400">Sale Price (Discount)</div>
+                              <div className="flex items-center gap-1.5">
+                                {newSale !== null ? (
+                                  <>
+                                    <span className="font-bold text-[#a7144c]">
+                                      Rs. {newSale.toLocaleString()}
+                                    </span>
+                                    {discountPercent !== null && (
+                                      <span className="bg-pink-100 text-[#a7144c] font-black text-[9px] px-1.5 py-0.2 rounded border border-pink-200">
+                                        {discountPercent}% OFF
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-gray-400 font-medium">No discount</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsBulkModalOpen(false)}
+                  className="px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isBulkSubmitting}
+                  className="px-6 py-2.5 bg-gradient-to-r from-[#36135d] to-[#a7144c] hover:opacity-90 text-white rounded-xl font-bold transition flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  {isBulkSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Updating Pricing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Percent className="w-4 h-4" />
+                      <span>Apply to {selectedCount} Product{selectedCount === 1 ? '' : 's'}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

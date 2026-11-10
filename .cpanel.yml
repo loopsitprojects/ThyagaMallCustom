@@ -1,0 +1,18 @@
+---
+deployment:
+  tasks:
+    - export APP_DIR="/home/$USER/ThyagaMall"
+    - export WEB_SUBFOLDER="/home/$USER/uat.loopsintegrated.co/thyaga"
+    # Ensure destination folder exists
+    - /bin/mkdir -p $WEB_SUBFOLDER
+    # Sync compiled public assets & entrypoint to uat.loopsintegrated.co/thyaga
+    - /bin/cp -R public/* $WEB_SUBFOLDER/
+    - /bin/cp public/.htaccess $WEB_SUBFOLDER/.htaccess
+    # Optimize Laravel inside APP_DIR
+    - cd $APP_DIR
+    - php artisan optimize:clear
+    - php artisan config:cache
+    - php artisan route:cache
+    - php artisan view:cache
+    - php artisan storage:link 2>/dev/null || true
+

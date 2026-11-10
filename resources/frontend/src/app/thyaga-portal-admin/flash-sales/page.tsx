@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/services/api';
 import { FlashSale, Product } from '@/types';
+import { getAssetUrl } from '@/utils/assets';
 
 export default function AdminFlashSalesPage() {
   const [flashSales, setFlashSales] = useState<FlashSale[]>([]);
@@ -554,7 +555,7 @@ export default function AdminFlashSalesPage() {
                       <td className="p-3">
                         <div className="relative w-10 h-10 bg-gray-100 rounded-md overflow-hidden border border-gray-200">
                           <Image
-                            src={product.primary_image || 'https://placehold.co/100x100?text=Flash'}
+                            src={getAssetUrl(product.primary_image || 'https://placehold.co/100x100?text=Flash')}
                             alt=""
                             fill
                             className="object-cover"

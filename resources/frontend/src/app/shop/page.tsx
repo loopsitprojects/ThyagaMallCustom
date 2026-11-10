@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useMemo, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { api } from '@/services/api';
 import { Category, Product } from '@/types';
+import { useCategories } from '@/hooks/useCategories';
 import ProductCard from '@/components/product/ProductCard';
 import { Filter, SlidersHorizontal, ChevronLeft, ChevronRight, Loader2, Sparkles, Check } from 'lucide-react';
 
@@ -20,7 +21,20 @@ function ShopContent() {
   const currentMaxPrice = searchParams.get('max_price') || '';
 
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { categories } = useCategories();
+  // Parents followed by their sub-categories (any depth), for the indented filter list.
+  const flatCategories = useMemo(() => {
+    const rows: { category: Category; depth: number }[] = [];
+    const walk = (nodes: Category[], depth: number) => {
+      nodes.forEach((node) => {
+        rows.push({ category: node, depth });
+        walk(node.children ?? [], depth + 1);
+      });
+    };
+    walk(categories, 0);
+    return rows;
+  }, [categories]);
+  const activeCategory = flatCategories.find((row) => row.category.slug === currentCategory)?.category;
   const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -32,12 +46,6 @@ function ShopContent() {
     setMinPrice(currentMinPrice);
     setMaxPrice(currentMaxPrice);
   }, [currentMinPrice, currentMaxPrice]);
-
-  useEffect(() => {
-    api.getCategories().then((res) => {
-      if (res.success) setCategories(res.data);
-    }).catch(() => {});
-  }, []);
 
   useEffect(() => {
     async function fetchCatalog() {
@@ -103,12 +111,12 @@ function ShopContent() {
             <Link href="/" className="hover:text-[#36135d]">Home</Link>
             <ChevronRight className="w-3 h-3" />
             <span className="font-semibold text-gray-800">
-              {currentCategory ? `Category: ${currentCategory}` : currentSearch ? `Search: "${currentSearch}"` : 'All Products'}
+              {currentCategory ? `Category: ${activeCategory?.name || currentCategory}` : currentSearch ? `Search: "${currentSearch}"` : 'All Products'}
             </span>
           </div>
           <h1 className="text-xl font-black text-gray-900">
             {currentCategory
-              ? categories.find((c) => c.slug === currentCategory)?.name || currentCategory
+              ? activeCategory?.name || currentCategory
               : currentSearch
               ? `Results for "${currentSearch}"`
               : 'Thyaga Mall Catalog'}
@@ -154,17 +162,18 @@ function ShopContent() {
                   <span>All Categories</span>
                 </button>
 
-                {categories.map((cat) => (
+                {flatCategories.map(({ category: cat, depth }) => (
                   <button
                     key={cat.id}
                     onClick={() => updateFilters({ category: cat.slug })}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex justify-between items-center ${
-                      currentCategory === cat.slug ? 'bg-purple-50 text-[#36135d] font-bold' : 'text-gray-600 hover:bg-gray-50'
+                    style={{ paddingLeft: `${0.625 + depth * 0.875}rem` }}
+                    className={`w-full text-left pr-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer flex justify-between items-center ${
+                      currentCategory === cat.slug ? 'bg-purple-50 text-[#36135d] font-bold' : depth === 0 ? 'font-semibold text-gray-700 hover:bg-gray-50' : 'font-medium text-gray-500 hover:bg-gray-50'
                     }`}
                   >
-                    <span>{cat.name}</span>
+                    <span>{depth > 0 && <span className="text-gray-300 mr-1">└</span>}{cat.name}</span>
                     <span className="text-[10px] text-gray-400">
-                      {cat.products_count || ''}
+                      {cat.total_products_count || ''}
                     </span>
                   </button>
                 ))}

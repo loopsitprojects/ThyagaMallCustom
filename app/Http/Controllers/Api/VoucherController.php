@@ -18,14 +18,14 @@ class VoucherController extends Controller
 
         $voucher = Voucher::where('code', strtoupper(trim($validated['code'])))->first();
 
-        if (!$voucher) {
+        if (! $voucher) {
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid Thyaga voucher code. Please check and try again.',
             ], 422);
         }
 
-        if (!$voucher->is_active) {
+        if (! $voucher->is_active) {
             return response()->json([
                 'success' => false,
                 'message' => 'This voucher is currently inactive.',
@@ -50,7 +50,7 @@ class VoucherController extends Controller
         if ($subtotal < $voucher->min_order_amount) {
             return response()->json([
                 'success' => false,
-                'message' => "This voucher requires a minimum order value of Rs. " . number_format($voucher->min_order_amount, 2),
+                'message' => 'This voucher requires a minimum order value of Rs. '.number_format($voucher->min_order_amount, 2),
             ], 422);
         }
 
@@ -64,7 +64,7 @@ class VoucherController extends Controller
                 'discount' => $discount,
                 'new_total' => max(0, $subtotal - $discount),
             ],
-            'message' => "Thyaga Voucher applied successfully! You saved Rs. " . number_format($discount, 2),
+            'message' => 'Thyaga Voucher applied successfully! You saved Rs. '.number_format($discount, 2),
         ]);
     }
 }

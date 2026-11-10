@@ -55,6 +55,12 @@ return [
     'url' => env('APP_URL', 'http://localhost'),
 
     /*
+    | Public address of the Next.js storefront (used for links and the logo in emails).
+    */
+
+    'frontend_url' => env('FRONTEND_URL', env('WEBXPAY_FRONTEND_URL', 'https://uat.loopsintegrated.co/thyaga')),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
@@ -65,7 +71,7 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'Asia/Colombo'),
 
     /*
     |--------------------------------------------------------------------------

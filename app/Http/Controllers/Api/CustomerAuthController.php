@@ -65,7 +65,7 @@ class CustomerAuthController extends Controller
         $email = strtolower(trim($request->email));
         $user = User::where('email', $email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['Invalid email or password.'],
             ]);
@@ -89,7 +89,7 @@ class CustomerAuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Welcome back, ' . $user->name . '!',
+            'message' => 'Welcome back, '.$user->name.'!',
             'token' => $token,
             'user' => [
                 'id' => $user->id,

@@ -12,10 +12,12 @@ import {
   PackageOpen,
   Sparkles,
 } from 'lucide-react';
+import OutOfStockBadge from '@/components/product/OutOfStockBadge';
 import { useWishlist } from '@/context/WishlistContext';
 import { useCart } from '@/context/CartContext';
 import { useFlashSale } from '@/context/FlashSaleContext';
 import { Product } from '@/types';
+import { getAssetUrl } from '@/utils/assets';
 
 export default function WishlistPage() {
   const { items, wishlistCount, removeFromWishlist, clearWishlist } = useWishlist();
@@ -46,7 +48,7 @@ export default function WishlistPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 sm:py-10">
+    <div className="max-w-site mx-auto px-4 lg:px-6 py-6 sm:py-10">
       {/* Page Title & Breadcrumb Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-gray-200">
         <div className="flex items-center gap-3">
@@ -131,7 +133,7 @@ export default function WishlistPage() {
             const isAdded = addedIds[product.id];
             const inStock = product.stock_quantity > 0;
 
-            const imageUrl = product.primary_image || 'https://placehold.co/400x400/f3f4f6/36135d?text=Thyaga+Mall';
+            const imageUrl = getAssetUrl(product.primary_image || 'https://placehold.co/400x400/f3f4f6/36135d?text=Thyaga+Mall');
 
             return (
               <div
@@ -150,8 +152,10 @@ export default function WishlistPage() {
                     />
                   </Link>
 
-                  {/* Discount Badge */}
-                  {discountPercent && discountPercent > 0 && (
+                  {/* Out of Stock or Discount Badge */}
+                  {!inStock ? (
+                    <OutOfStockBadge className="top-2 left-2 text-[10px] px-2 py-0.5 rounded-full" />
+                  ) : discountPercent && discountPercent > 0 && (
                     <div className="absolute top-2 left-2 bg-[#a7144c] text-white font-extrabold text-[10px] px-2 py-0.5 rounded-full shadow-xs">
                       -{discountPercent}%
                     </div>

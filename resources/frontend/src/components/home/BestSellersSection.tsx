@@ -8,20 +8,20 @@ import { api } from '@/services/api';
 import { Product } from '@/types';
 import ProductCard from '@/components/product/ProductCard';
 import { Stagger, StaggerItem } from '@/components/motion/Reveal';
-
-const TABS = [
-  { label: 'All', slug: '' },
-  { label: 'Electronics', slug: 'electronics' },
-  { label: 'Home', slug: 'home' },
-  { label: 'Beauty', slug: 'beauty' },
-  { label: 'Food', slug: 'food' },
-  { label: 'Fashion', slug: 'fashion' },
-];
+import { useCategories, categoryHref } from '@/hooks/useCategories';
 
 export default function BestSellersSection() {
   const [activeTab, setActiveTab] = useState('All');
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { categories } = useCategories();
+
+  // "All" plus the categories marked "Show on homepage" in Admin → Categories.
+  const TABS = [
+    { label: 'All', slug: '' },
+    ...categories.filter((c) => c.is_featured).map((c) => ({ label: c.name, slug: c.slug })),
+  ];
+  const activeTabSlug = TABS.find((t) => t.label === activeTab)?.slug ?? '';
 
   useEffect(() => {
     let isMounted = true;
@@ -29,15 +29,10 @@ export default function BestSellersSection() {
 
     async function loadBestSellers() {
       try {
-        const selectedTab = TABS.find((t) => t.label === activeTab);
-        const res = await api.getProducts({
-          category: selectedTab?.slug || undefined,
-          sort: 'popular',
-          per_page: 6,
-        });
+        const res = await api.getHomeSection('best_sellers', activeTabSlug || undefined);
 
-        if (isMounted && res.success && res.data) {
-          setProducts(res.data.slice(0, 6));
+        if (isMounted && res.success) {
+          setProducts(res.data);
         }
       } catch (err) {
         console.error('Failed to load best seller products:', err);
@@ -51,10 +46,9 @@ export default function BestSellersSection() {
     return () => {
       isMounted = false;
     };
-  }, [activeTab]);
+  }, [activeTabSlug]);
 
-  const activeTabSlug = TABS.find((t) => t.label === activeTab)?.slug;
-  const viewAllUrl = activeTabSlug ? `/shop?category=${activeTabSlug}` : '/shop?sort=popular';
+  const viewAllUrl = activeTabSlug ? categoryHref({ slug: activeTabSlug }) : '/shop?sort=popular';
 
   if (!isLoading && products.length === 0 && activeTab === 'All') {
     return null;

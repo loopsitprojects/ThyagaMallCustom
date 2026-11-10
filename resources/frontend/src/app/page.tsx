@@ -1,8 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { api } from '@/services/api';
-import { Category } from '@/types';
+import React from 'react';
 import { useFlashSale } from '@/context/FlashSaleContext';
 import HeroBanner from '@/components/home/HeroBanner';
 import QuickCategoryIcons from '@/components/home/QuickCategoryIcons';
@@ -17,30 +15,14 @@ import NewsletterBar from '@/components/home/NewsletterBar';
 import { Reveal } from '@/components/motion/Reveal';
 
 export default function HomePage() {
-  const [categories, setCategories] = useState<Category[]>([]);
   const { flashSale, isActive } = useFlashSale();
-
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const catRes = await api.getCategories();
-        if (catRes.success) {
-          setCategories(catRes.data);
-        }
-      } catch {
-        // Handled gracefully
-      }
-    }
-
-    loadData();
-  }, []);
 
   return (
     <div className="space-y-6">
       {/* 1. Hero Promotional Area with Category Sidebar & App/Promo Widgets */}
-      <HeroBanner categories={categories} />
+      <HeroBanner />
 
-      {/* 2. 12 Quick Category Circular Badges */}
+      {/* 2. Quick category shortcuts (homepage categories from Admin → Categories) */}
       <Reveal>
         <QuickCategoryIcons />
       </Reveal>

@@ -9,14 +9,23 @@ use Illuminate\Support\Facades\Log;
 class WebxpayService
 {
     protected string $mode;
+
     protected string $checkoutUrl;
+
     protected string $merchantId;
+
     protected string $secretKey;
+
     protected string $publicKey;
+
     protected string $apiUsername;
+
     protected string $apiPassword;
+
     protected string $currency;
+
     protected ?string $returnUrl;
+
     protected string $frontendUrl;
 
     public function __construct()
@@ -34,7 +43,7 @@ class WebxpayService
         $this->apiPassword = config('webxpay.api_password', '');
         $this->currency = config('webxpay.currency', 'LKR');
         $this->frontendUrl = rtrim(config('webxpay.frontend_url', 'https://ai.loopsintegrated.co/ThyagaMall'), '/');
-        $this->returnUrl = config('webxpay.return_url') ?: ($this->frontendUrl . '/api/payment/webxpay/callback');
+        $this->returnUrl = config('webxpay.return_url') ?: ($this->frontendUrl.'/api/payment/webxpay/callback');
     }
 
     /**
@@ -66,14 +75,14 @@ class WebxpayService
         $price = number_format($actualTotal, 2, '.', '');
         if ($this->mode === 'sandbox' && $actualTotal > 100.00) {
             $price = '100.00';
-            Log::info("WebXpay Sandbox: Total capped to LKR 100.00 for sandbox test gateway compatibility", [
+            Log::info('WebXpay Sandbox: Total capped to LKR 100.00 for sandbox test gateway compatibility', [
                 'order_number' => $order->order_number,
                 'actual_total' => $actualTotal,
             ]);
         }
 
         // Custom fields pipe-separated (e.g. order_number|total|order_id)
-        $customFieldsPlain = $order->order_number . '|' . $price . '|' . $order->id;
+        $customFieldsPlain = $order->order_number.'|'.$price.'|'.$order->id;
         $customFieldsEncoded = base64_encode($customFieldsPlain);
 
         // Core fields standard for WebXPay
@@ -96,26 +105,26 @@ class WebxpayService
             'currency' => $this->currency,
             'custom_fields' => $customFieldsEncoded,
             'return_url' => $this->returnUrl,
-            'cancel_url' => $this->frontendUrl . '/checkout?payment_error=Payment%20was%20cancelled%20by%20user',
+            'cancel_url' => $this->frontendUrl.'/checkout?payment_error=Payment%20was%20cancelled%20by%20user',
         ];
 
-        if (!empty($this->merchantId)) {
+        if (! empty($this->merchantId)) {
             $fields['merchant_id'] = $this->merchantId;
             $fields['merchant_mid'] = $this->merchantId;
         }
 
-        if (!empty($this->secretKey)) {
+        if (! empty($this->secretKey)) {
             $fields['secret_key'] = $this->secretKey;
         }
 
-        if (!empty($this->apiUsername)) {
+        if (! empty($this->apiUsername)) {
             $fields['api_username'] = $this->apiUsername;
         }
 
         // Encrypt payment payload using WebXPay RSA Public Key (Format: order_id|total_amount)
         $paymentPlaintext = "{$order->order_number}|{$price}";
 
-        if (!empty($this->publicKey)) {
+        if (! empty($this->publicKey)) {
             $formattedKey = $this->formatPublicKey($this->publicKey);
             $publicKeyResource = @openssl_pkey_get_public($formattedKey);
             $encryptedData = '';
@@ -123,7 +132,7 @@ class WebxpayService
             if ($publicKeyResource && @openssl_public_encrypt($paymentPlaintext, $encryptedData, $publicKeyResource, OPENSSL_PKCS1_OAEP_PADDING)) {
                 $fields['payment'] = base64_encode($encryptedData);
             } else {
-                Log::error('WebXpay RSA encryption failed: ' . openssl_error_string());
+                Log::error('WebXpay RSA encryption failed: '.openssl_error_string());
                 $fields['payment'] = base64_encode($paymentPlaintext);
             }
         } else {
@@ -172,7 +181,7 @@ class WebxpayService
             $orderNumber = $parsed['order_number'] ?? null;
             $transactionId = $parsed['transaction_id'] ?? null;
 
-            if (!$signatureValid) {
+            if (! $signatureValid) {
                 Log::warning('WebXpay callback rejected: invalid or missing signature', ['order_number' => $orderNumber]);
             } elseif ($parsed['status'] === 'success' || in_array((string) $parsed['status_code'], ['0', '00'], true)) {
                 $status = 'success';
@@ -181,14 +190,14 @@ class WebxpayService
                 $message = $parsed['message'] ?: 'Payment rejected';
             }
 
-            if (!$orderNumber && ($customFieldsEncoded = $request->input('custom_fields'))) {
+            if (! $orderNumber && ($customFieldsEncoded = $request->input('custom_fields'))) {
                 $customParts = explode('|', (string) base64_decode($customFieldsEncoded));
                 $orderNumber = $customParts[0] ?? null;
             }
         }
 
         // Unsigned fields are only used to find the order for the "payment failed" redirect.
-        if (!$orderNumber) {
+        if (! $orderNumber) {
             $orderNumber = $request->input('order_id')
                 ?: $request->input('order_reference_number')
                 ?: $request->input('merchant_ref');
@@ -211,12 +220,14 @@ class WebxpayService
     {
         if (empty($this->publicKey)) {
             Log::error('WebXpay callback cannot be verified: WEBXPAY_PUBLIC_KEY is not configured.');
+
             return false;
         }
 
         $key = @openssl_pkey_get_public($this->formatPublicKey($this->publicKey));
-        if (!$key) {
-            Log::error('WebXpay public key is invalid: ' . openssl_error_string());
+        if (! $key) {
+            Log::error('WebXpay public key is invalid: '.openssl_error_string());
+
             return false;
         }
 
@@ -238,7 +249,8 @@ class WebxpayService
         if (str_contains($key, '-----BEGIN PUBLIC KEY-----')) {
             return $key;
         }
-        return "-----BEGIN PUBLIC KEY-----\n" . wordwrap($key, 64, "\n", true) . "\n-----END PUBLIC KEY-----";
+
+        return "-----BEGIN PUBLIC KEY-----\n".wordwrap($key, 64, "\n", true)."\n-----END PUBLIC KEY-----";
     }
 
     /**
@@ -260,6 +272,7 @@ class WebxpayService
 
         // Fallback: pipe-delimited format (order_id|status_code|ref_id|...)
         $parts = explode('|', $data);
+
         return [
             'order_number' => $parts[0] ?? null,
             'status_code' => $parts[1] ?? null,
@@ -280,6 +293,7 @@ class WebxpayService
         }
 
         $errorMsg = urlencode($errorMessage ?: 'Payment could not be completed. Please try again.');
+
         return "{$base}/checkout/?payment_error={$errorMsg}&order={$orderNumber}";
     }
 }

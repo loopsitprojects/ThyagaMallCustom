@@ -24,7 +24,7 @@ return [
     */
     'endpoints' => [
         'sandbox' => env('THYAGA_VOUCHER_SANDBOX_URL', ''),
-        'live'    => env('THYAGA_VOUCHER_LIVE_URL', ''),
+        'live' => env('THYAGA_VOUCHER_LIVE_URL', ''),
     ],
 
     /*

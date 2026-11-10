@@ -1,0 +1,32 @@
+-- Switch stored dates from UTC to Sri Lanka time (Asia/Colombo, UTC+05:30).
+-- Equivalent of migration 2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time.
+-- Import this LAST, after the other 2026_10_29 files, and only once the code using APP timezone Asia/Colombo is deployed.
+-- Safe to run more than once: every UPDATE is skipped once the migration is recorded.
+
+UPDATE `activity_logs` SET `created_at` = `created_at` + INTERVAL 330 MINUTE, `updated_at` = `updated_at` + INTERVAL 330 MINUTE WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');
+UPDATE `admins` SET `last_login_at` = `last_login_at` + INTERVAL 330 MINUTE, `created_at` = `created_at` + INTERVAL 330 MINUTE, `updated_at` = `updated_at` + INTERVAL 330 MINUTE WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');
+UPDATE `brands` SET `created_at` = `created_at` + INTERVAL 330 MINUTE, `updated_at` = `updated_at` + INTERVAL 330 MINUTE WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');
+UPDATE `categories` SET `created_at` = `created_at` + INTERVAL 330 MINUTE, `updated_at` = `updated_at` + INTERVAL 330 MINUTE WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');
+UPDATE `failed_jobs` SET `failed_at` = `failed_at` + INTERVAL 330 MINUTE WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');
+UPDATE `flash_sale_items` SET `created_at` = `created_at` + INTERVAL 330 MINUTE, `updated_at` = `updated_at` + INTERVAL 330 MINUTE WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');
+UPDATE `flash_sales` SET `start_time` = `start_time` + INTERVAL 330 MINUTE, `end_time` = `end_time` + INTERVAL 330 MINUTE, `created_at` = `created_at` + INTERVAL 330 MINUTE, `updated_at` = `updated_at` + INTERVAL 330 MINUTE WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');
+UPDATE `hero_slides` SET `created_at` = `created_at` + INTERVAL 330 MINUTE, `updated_at` = `updated_at` + INTERVAL 330 MINUTE WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');
+UPDATE `merchants` SET `created_at` = `created_at` + INTERVAL 330 MINUTE, `updated_at` = `updated_at` + INTERVAL 330 MINUTE WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');
+UPDATE `newsletter_subscribers` SET `subscribed_at` = `subscribed_at` + INTERVAL 330 MINUTE, `unsubscribed_at` = `unsubscribed_at` + INTERVAL 330 MINUTE, `created_at` = `created_at` + INTERVAL 330 MINUTE, `updated_at` = `updated_at` + INTERVAL 330 MINUTE WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');
+UPDATE `order_items` SET `created_at` = `created_at` + INTERVAL 330 MINUTE, `updated_at` = `updated_at` + INTERVAL 330 MINUTE WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');
+UPDATE `order_notification_recipients` SET `created_at` = `created_at` + INTERVAL 330 MINUTE, `updated_at` = `updated_at` + INTERVAL 330 MINUTE WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');
+UPDATE `orders` SET `created_at` = `created_at` + INTERVAL 330 MINUTE, `updated_at` = `updated_at` + INTERVAL 330 MINUTE WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');
+UPDATE `password_reset_tokens` SET `created_at` = `created_at` + INTERVAL 330 MINUTE WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');
+UPDATE `personal_access_tokens` SET `last_used_at` = `last_used_at` + INTERVAL 330 MINUTE, `expires_at` = `expires_at` + INTERVAL 330 MINUTE, `created_at` = `created_at` + INTERVAL 330 MINUTE, `updated_at` = `updated_at` + INTERVAL 330 MINUTE WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');
+UPDATE `product_images` SET `created_at` = `created_at` + INTERVAL 330 MINUTE, `updated_at` = `updated_at` + INTERVAL 330 MINUTE WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');
+UPDATE `products` SET `created_at` = `created_at` + INTERVAL 330 MINUTE, `updated_at` = `updated_at` + INTERVAL 330 MINUTE WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');
+UPDATE `reviews` SET `created_at` = `created_at` + INTERVAL 330 MINUTE, `updated_at` = `updated_at` + INTERVAL 330 MINUTE WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');
+UPDATE `users` SET `last_login_at` = `last_login_at` + INTERVAL 330 MINUTE, `email_verified_at` = `email_verified_at` + INTERVAL 330 MINUTE, `created_at` = `created_at` + INTERVAL 330 MINUTE, `updated_at` = `updated_at` + INTERVAL 330 MINUTE WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');
+UPDATE `vouchers` SET `expires_at` = `expires_at` + INTERVAL 330 MINUTE, `created_at` = `created_at` + INTERVAL 330 MINUTE, `updated_at` = `updated_at` + INTERVAL 330 MINUTE WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');
+
+-- Mark the Laravel migration as run so a later `php artisan migrate` skips it
+INSERT INTO `migrations` (`migration`, `batch`)
+SELECT next_run.migration, next_run.batch FROM (
+  SELECT '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time' AS migration, COALESCE(MAX(`batch`), 0) + 1 AS batch FROM `migrations`
+) AS next_run
+WHERE NOT EXISTS (SELECT 1 FROM `migrations` WHERE `migration` = '2026_10_29_075505_shift_stored_timestamps_to_sri_lanka_time');

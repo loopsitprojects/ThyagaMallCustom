@@ -21,9 +21,9 @@ class AdminOrderController extends Controller
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('order_number', 'like', "%{$search}%")
-                  ->orWhere('customer_name', 'like', "%{$search}%")
-                  ->orWhere('customer_email', 'like', "%{$search}%")
-                  ->orWhere('customer_phone', 'like', "%{$search}%");
+                    ->orWhere('customer_name', 'like', "%{$search}%")
+                    ->orWhere('customer_email', 'like', "%{$search}%")
+                    ->orWhere('customer_phone', 'like', "%{$search}%");
             });
         }
 
@@ -65,7 +65,7 @@ class AdminOrderController extends Controller
 
         ActivityLog::record(
             'UPDATE_ORDER',
-            "Updated Order #{$order->order_number} fulfillment status to " . strtoupper($order->order_status),
+            "Updated Order #{$order->order_number} fulfillment status to ".strtoupper($order->order_status),
             'Order',
             $order->id,
             $request->user(),

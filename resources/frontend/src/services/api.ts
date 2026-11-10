@@ -1,4 +1,6 @@
 import {
+  Brand,
+  BrandInput,
   Category,
   Product,
   FlashSale,
@@ -14,9 +16,20 @@ import {
   ThyagaRedemption,
   HeroSlide,
   HeroSlideInput,
+  HeroMode,
+  HeroBannerImage,
+  HeroBannerConfig,
+  HomeSection,
+  ProductWithRestockRequests,
+  OnboardingAd,
+  OnboardingAdInput,
+  CategoryInput,
+  ProductReview,
+  ReviewSummary,
+  OrderEmailRecipient,
 } from '@/types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001/api';
 
 async function fetcher<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
@@ -93,6 +106,16 @@ export const api = {
       headers: { Authorization: `Bearer ${token}` },
     });
   },
+  // Brands
+  async getBrands(params?: { featured?: boolean }): Promise<{ success: boolean; data: Brand[] }> {
+    const qs = params?.featured ? '?featured=1' : '';
+    return fetcher(`/brands${qs}`);
+  },
+
+  async getBrand(slug: string): Promise<{ success: boolean; data: { brand: Brand; products: { data: Product[] } } }> {
+    return fetcher(`/brands/${slug}`);
+  },
+
   // Categories
   async getCategories(): Promise<{ success: boolean; data: Category[] }> {
     return fetcher('/categories');
@@ -102,10 +125,203 @@ export const api = {
     return fetcher(`/categories/${slug}`);
   },
 
+  // Product reviews (customers write one per product; published after admin approval)
+  async getProductReviews(slug: string, page: number = 1): Promise<{
+    success: boolean;
+    data: ProductReview[];
+    summary: ReviewSummary;
+    pagination: { current_page: number; last_page: number; total: number };
+  }> {
+    return fetcher(`/products/${encodeURIComponent(slug)}/reviews?page=${page}`);
+  },
+
+  async getMyReview(token: string, slug: string): Promise<{ success: boolean; data: ProductReview | null }> {
+    return fetcher(`/products/${encodeURIComponent(slug)}/reviews/mine`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async submitReview(token: string, slug: string, data: { rating: number; title?: string; comment: string }): Promise<{ success: boolean; message: string; data: ProductReview }> {
+    return fetcher(`/products/${encodeURIComponent(slug)}/reviews`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteMyReview(token: string, slug: string): Promise<{ success: boolean; message: string }> {
+    return fetcher(`/products/${encodeURIComponent(slug)}/reviews/mine`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  // Admin review moderation
+  async getAdminReviews(token: string, params: { status?: 'pending' | 'approved' | 'all'; search?: string; page?: number } = {}): Promise<{
+    success: boolean;
+    data: ProductReview[];
+    counts: { pending: number; approved: number; all: number };
+    pagination: { current_page: number; last_page: number; total: number };
+  }> {
+    const qs = new URLSearchParams();
+    if (params.status) qs.set('status', params.status);
+    if (params.search) qs.set('search', params.search);
+    if (params.page) qs.set('page', String(params.page));
+    return fetcher(`/admin/reviews?${qs.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async setAdminReviewStatus(token: string, id: number, isApproved: boolean): Promise<{ success: boolean; message: string; data: ProductReview }> {
+    return fetcher(`/admin/reviews/${id}/status`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ is_approved: isApproved }),
+    });
+  },
+
+  async deleteAdminReview(token: string, id: number): Promise<{ success: boolean; message: string }> {
+    return fetcher(`/admin/reviews/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  // Admin email settings: new-order notification recipients (super admins only)
+  async getEmailSettings(token: string): Promise<{ success: boolean; data: OrderEmailRecipient[] }> {
+    return fetcher('/admin/email-settings', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async addOrderEmailRecipient(token: string, data: { email: string; name?: string }): Promise<{ success: boolean; message: string; data: OrderEmailRecipient }> {
+    return fetcher('/admin/email-settings/recipients', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+  },
+
+  async setOrderEmailRecipientActive(token: string, id: number, isActive: boolean): Promise<{ success: boolean; message: string; data: OrderEmailRecipient }> {
+    return fetcher(`/admin/email-settings/recipients/${id}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ is_active: isActive }),
+    });
+  },
+
+  async deleteOrderEmailRecipient(token: string, id: number): Promise<{ success: boolean; message: string }> {
+    return fetcher(`/admin/email-settings/recipients/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  // Admin category management (flat list incl. inactive; the UI builds the tree)
+  async getAdminCategories(token: string): Promise<{ success: boolean; data: Category[]; icons: string[] }> {
+    return fetcher('/admin/categories', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async createAdminCategory(token: string, data: CategoryInput): Promise<{ success: boolean; message: string; data: Category }> {
+    return fetcher('/admin/categories', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+  },
+
+  async updateAdminCategory(token: string, id: number, data: CategoryInput): Promise<{ success: boolean; message: string; data: Category }> {
+    return fetcher(`/admin/categories/${id}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteAdminCategory(token: string, id: number): Promise<{ success: boolean; message: string }> {
+    return fetcher(`/admin/categories/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async reorderAdminCategories(token: string, ids: number[]): Promise<{ success: boolean; message: string }> {
+    return fetcher('/admin/categories/reorder', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ ids }),
+    });
+  },
+
+  // Admin Brands Management
+  async getAdminBrands(token: string, params?: { search?: string; status?: string; featured?: boolean }): Promise<{
+    success: boolean;
+    data: Brand[];
+    stats: { total: number; featured: number; active: number; inactive: number };
+  }> {
+    const query = new URLSearchParams();
+    if (params?.search) query.set('search', params.search);
+    if (params?.status) query.set('status', params.status);
+    if (params?.featured !== undefined) query.set('featured', params.featured ? '1' : '0');
+    const qs = query.toString() ? `?${query.toString()}` : '';
+
+    return fetcher(`/admin/brands${qs}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async createAdminBrand(token: string, data: BrandInput): Promise<{ success: boolean; message: string; data: Brand }> {
+    return fetcher('/admin/brands', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+  },
+
+  async updateAdminBrand(token: string, id: number, data: BrandInput): Promise<{ success: boolean; message: string; data: Brand }> {
+    return fetcher(`/admin/brands/${id}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+  },
+
+  async toggleAdminBrandFeatured(token: string, id: number): Promise<{ success: boolean; message: string; data: Brand }> {
+    return fetcher(`/admin/brands/${id}/toggle-featured`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async toggleAdminBrandStatus(token: string, id: number): Promise<{ success: boolean; message: string; data: Brand }> {
+    return fetcher(`/admin/brands/${id}/toggle-status`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async deleteAdminBrand(token: string, id: number): Promise<{ success: boolean; message: string }> {
+    return fetcher(`/admin/brands/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async reorderAdminBrands(token: string, ids: number[]): Promise<{ success: boolean; message: string; data: Brand[] }> {
+    return fetcher('/admin/brands/reorder', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ ids }),
+    });
+  },
+
   // Products
   async getProducts(params: {
     search?: string;
     category?: string;
+    brand?: string;
     min_price?: number;
     max_price?: number;
     sort?: string;
@@ -125,6 +341,7 @@ export const api = {
     const query = new URLSearchParams();
     if (params.search) query.append('search', params.search);
     if (params.category) query.append('category', params.category);
+    if (params.brand) query.append('brand', params.brand);
     if (params.min_price) query.append('min_price', params.min_price.toString());
     if (params.max_price) query.append('max_price', params.max_price.toString());
     if (params.sort) query.append('sort', params.sort);
@@ -258,6 +475,191 @@ export const api = {
     });
   },
 
+  // Homepage hero: mode switch (3D / image carousel) + carousel images
+  async getHeroBanner(): Promise<{ success: boolean; data: HeroBannerConfig }> {
+    return fetcher('/hero-banner');
+  },
+
+  async getAdminHeroBanner(token: string): Promise<{ success: boolean; data: { mode: HeroMode; images: HeroBannerImage[] } }> {
+    return fetcher('/admin/hero-banner', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async updateAdminHeroMode(token: string, mode: HeroMode): Promise<{ success: boolean; message: string; data: { mode: HeroMode } }> {
+    return fetcher('/admin/hero-banner/mode', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ mode }),
+    });
+  },
+
+  async uploadAdminHeroImage(
+    token: string,
+    file: File,
+    data: { alt_text?: string; title?: string; subtitle?: string; cta_text?: string; link?: string }
+  ): Promise<{ success: boolean; message: string; data: HeroBannerImage }> {
+    const formData = new FormData();
+    formData.append('image', file);
+    Object.entries(data).forEach(([key, value]) => {
+      if (value) formData.append(key, value);
+    });
+
+    const res = await fetch(`${API_BASE}/admin/hero-banner/images`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+      },
+      body: formData,
+    });
+    const json = await res.json();
+    if (!res.ok || json.success === false) {
+      const firstError = json.errors ? (Object.values(json.errors)[0] as string[])?.[0] : undefined;
+      throw new Error(firstError || json.message || 'Image upload failed');
+    }
+    return json;
+  },
+
+  async updateAdminHeroImage(
+    token: string,
+    id: number,
+    data: Partial<Pick<HeroBannerImage, 'alt_text' | 'title' | 'subtitle' | 'cta_text' | 'link' | 'is_active'>>
+  ): Promise<{ success: boolean; message: string; data: HeroBannerImage }> {
+    return fetcher(`/admin/hero-banner/images/${id}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteAdminHeroImage(token: string, id: number): Promise<{ success: boolean; message: string }> {
+    return fetcher(`/admin/hero-banner/images/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async reorderAdminHeroImages(token: string, ids: number[]): Promise<{ success: boolean; message: string; data: HeroBannerImage[] }> {
+    return fetcher('/admin/hero-banner/images/reorder', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ ids }),
+    });
+  },
+
+  // "Notify me when back in stock"
+  async requestRestockAlert(productSlug: string, email: string): Promise<{ success: boolean; message: string }> {
+    return fetcher(`/products/${encodeURIComponent(productSlug)}/restock-alerts`, {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  async getAdminRestockRequests(token: string, params: { page?: number; status?: string; search?: string } = {}): Promise<{
+    success: boolean;
+    data: ProductWithRestockRequests[];
+    stats: { waiting: number; notified: number };
+    pagination: { current_page: number; last_page: number; per_page: number; total: number };
+  }> {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', params.page.toString());
+    if (params.status) query.append('status', params.status);
+    if (params.search) query.append('search', params.search);
+    const qs = query.toString();
+    return fetcher(`/admin/restock-requests${qs ? `?${qs}` : ''}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async deleteAdminRestockRequest(token: string, id: number): Promise<{ success: boolean; message: string }> {
+    return fetcher(`/admin/restock-requests/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  // Homepage Trending / Best Sellers: the admin's picks, or automatic products when there are none
+  async getHomeSection(section: HomeSection, category?: string): Promise<{ success: boolean; data: Product[]; curated: boolean }> {
+    const query = category ? `?category=${encodeURIComponent(category)}` : '';
+    return fetcher(`/home-sections/${section}${query}`);
+  },
+
+  async getAdminHomeSections(token: string): Promise<{ success: boolean; data: Record<HomeSection, Product[]> }> {
+    return fetcher('/admin/home-sections', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async addAdminHomeSectionProduct(token: string, section: HomeSection, productId: number): Promise<{ success: boolean; message: string; data: Product[] }> {
+    return fetcher(`/admin/home-sections/${section}/products`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ product_id: productId }),
+    });
+  },
+
+  async removeAdminHomeSectionProduct(token: string, section: HomeSection, productId: number): Promise<{ success: boolean; message: string; data: Product[] }> {
+    return fetcher(`/admin/home-sections/${section}/products/${productId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async reorderAdminHomeSection(token: string, section: HomeSection, ids: number[]): Promise<{ success: boolean; message: string; data: Product[] }> {
+    return fetcher(`/admin/home-sections/${section}/reorder`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ ids }),
+    });
+  },
+
+  // Storefront welcome pop-up (onboarding ad)
+  async getOnboardingAd(): Promise<{ success: boolean; data: OnboardingAd | null }> {
+    return fetcher('/onboarding-ad');
+  },
+
+  async getAdminOnboardingAd(token: string): Promise<{ success: boolean; data: OnboardingAd }> {
+    return fetcher('/admin/onboarding-ad', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async updateAdminOnboardingAd(token: string, data: Partial<OnboardingAdInput>): Promise<{ success: boolean; message: string; data: OnboardingAd }> {
+    return fetcher('/admin/onboarding-ad', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+  },
+
+  async uploadAdminOnboardingAdImage(token: string, file: File): Promise<{ success: boolean; message: string; data: OnboardingAd }> {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const res = await fetch(`${API_BASE}/admin/onboarding-ad/image`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+      },
+      body: formData,
+    });
+    const json = await res.json();
+    if (!res.ok || json.success === false) {
+      const firstError = json.errors ? (Object.values(json.errors)[0] as string[])?.[0] : undefined;
+      throw new Error(firstError || json.message || 'Image upload failed');
+    }
+    return json;
+  },
+
+  async removeAdminOnboardingAdImage(token: string): Promise<{ success: boolean; message: string; data: OnboardingAd }> {
+    return fetcher('/admin/onboarding-ad/image', {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
   // Newsletter
   async subscribeNewsletter(email: string, source: string = 'home_banner'): Promise<{
     success: boolean;
@@ -362,6 +764,7 @@ export const api = {
     page?: number;
     search?: string;
     category_id?: number;
+    brand_id?: number;
     merchant_id?: number;
     stock_status?: string;
     per_page?: number;
@@ -379,6 +782,7 @@ export const api = {
     if (params.page) query.append('page', params.page.toString());
     if (params.search) query.append('search', params.search);
     if (params.category_id) query.append('category_id', params.category_id.toString());
+    if (params.brand_id) query.append('brand_id', params.brand_id.toString());
     if (params.merchant_id) query.append('merchant_id', params.merchant_id.toString());
     if (params.stock_status) query.append('stock_status', params.stock_status);
     if (params.per_page) query.append('per_page', params.per_page.toString());
@@ -417,6 +821,31 @@ export const api = {
     return fetcher(`/admin/products/${id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async bulkPricingAdminProducts(token: string, payload: {
+    product_ids?: number[];
+    select_all_matching?: boolean;
+    filters?: {
+      search?: string;
+      category_id?: number;
+      merchant_id?: number;
+      brand_id?: number;
+      stock_status?: string;
+    };
+    target: 'discount' | 'regular_price' | 'both';
+    regular_action?: 'increase_percent' | 'decrease_percent' | 'increase_flat' | 'decrease_flat' | 'set_exact';
+    regular_value?: number;
+    discount_action?: 'set_percent' | 'set_flat_discount' | 'set_sale_price' | 'clear_discount';
+    discount_value?: number;
+    round_to?: 'none' | '1' | '10' | '50' | '100';
+    sale_price_handling?: 'keep_discount_percent' | 'keep_sale_price' | 'remove_sale_price';
+  }): Promise<{ success: boolean; message: string; updated_count: number }> {
+    return fetcher('/admin/products/bulk-pricing', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload),
     });
   },
 

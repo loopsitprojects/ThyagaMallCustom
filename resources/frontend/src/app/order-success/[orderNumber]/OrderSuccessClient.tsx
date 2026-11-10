@@ -25,6 +25,8 @@ import {
 import { api } from '@/services/api';
 import { Order } from '@/types';
 import { useCart } from '@/context/CartContext';
+import OrderReceipt from '@/components/order/OrderReceipt';
+import { getAssetUrl } from '@/utils/assets';
 
 export default function OrderSuccessClient() {
   const params = useParams();
@@ -132,9 +134,12 @@ export default function OrderSuccessClient() {
   };
 
   const handlePrint = () => {
-    if (typeof window !== 'undefined') {
-      window.print();
-    }
+    if (typeof window === 'undefined') return;
+    // The document title becomes the suggested PDF file name
+    const previousTitle = document.title;
+    document.title = `Thyaga-Mall-Receipt-${orderNumber || 'order'}`;
+    window.print();
+    document.title = previousTitle;
   };
 
   const isPaid = isPaymentPaidQuery || order?.payment_status === 'paid';
@@ -157,7 +162,9 @@ export default function OrderSuccessClient() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto my-6 sm:my-10 px-4 space-y-6">
+    <>
+    {order && <OrderReceipt order={order} isPaid={isPaid} />}
+    <div className="max-w-3xl mx-auto my-6 sm:my-10 px-4 space-y-6 print:hidden">
       {/* Breadcrumb Navigation */}
       <div className="flex items-center gap-1.5 text-xs text-gray-500">
         <Link href="/" className="hover:text-[#36135d]">Home</Link>
@@ -277,7 +284,7 @@ export default function OrderSuccessClient() {
                         {item.product_image ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={item.product_image}
+                            src={getAssetUrl(item.product_image)}
                             alt={item.product_name}
                             className="w-full h-full object-contain"
                           />
@@ -440,5 +447,6 @@ export default function OrderSuccessClient() {
         </p>
       </div>
     </div>
+    </>
   );
 }

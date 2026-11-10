@@ -55,7 +55,7 @@ class AdminNewsletterController extends Controller
         // Export to CSV
         if ($request->input('export') === 'csv') {
             $subscribers = $query->get();
-            $filename = 'newsletter_subscribers_' . date('Ymd_His') . '.csv';
+            $filename = 'newsletter_subscribers_'.date('Ymd_His').'.csv';
 
             $headers = [
                 'Content-Type' => 'text/csv',
@@ -152,7 +152,7 @@ class AdminNewsletterController extends Controller
         $subscriber = NewsletterSubscriber::findOrFail($id);
         $newStatus = $request->input('status');
 
-        if (!$newStatus) {
+        if (! $newStatus) {
             $newStatus = $subscriber->status === 'subscribed' ? 'unsubscribed' : 'subscribed';
         }
 
@@ -165,7 +165,7 @@ class AdminNewsletterController extends Controller
         if ($request->user()) {
             ActivityLog::record(
                 'UPDATE_SUBSCRIBER_STATUS',
-                "Changed newsletter subscriber '{$subscriber->email}' status to " . strtoupper($newStatus),
+                "Changed newsletter subscriber '{$subscriber->email}' status to ".strtoupper($newStatus),
                 'NewsletterSubscriber',
                 $subscriber->id,
                 $request->user(),

@@ -6,7 +6,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
   LayoutDashboard,
+  MessageSquareText,
+  FolderTree,
   GalleryHorizontalEnd,
+  Megaphone,
+  BellRing,
+  Flame,
   Package,
   Zap,
   ShoppingBag,
@@ -16,7 +21,9 @@ import {
   ExternalLink,
   ShieldCheck,
   Store,
+  Award,
   Mail,
+  MailCheck,
   Menu,
   X,
   ChevronLeft,
@@ -118,13 +125,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const navItems = [
     { label: 'Dashboard', href: '/thyaga-portal-admin/dashboard', icon: LayoutDashboard },
     { label: 'Products', href: '/thyaga-portal-admin/products', icon: Package },
+    { label: 'Categories', href: '/thyaga-portal-admin/categories', icon: FolderTree },
+    { label: 'Brands', href: '/thyaga-portal-admin/brands', icon: Award },
     { label: 'Merchants', href: '/thyaga-portal-admin/merchants', icon: Store },
     { label: 'Flash Sales', href: '/thyaga-portal-admin/flash-sales', icon: Zap, badge: 'HOT' },
     { label: 'Hero Slides', href: '/thyaga-portal-admin/hero-slides', icon: GalleryHorizontalEnd },
+    { label: 'Homepage Sections', href: '/thyaga-portal-admin/home-sections', icon: Flame },
+    { label: 'Onboarding Ad', href: '/thyaga-portal-admin/onboarding-ad', icon: Megaphone },
     { label: 'Orders', href: '/thyaga-portal-admin/orders', icon: ShoppingBag },
+    { label: 'Reviews', href: '/thyaga-portal-admin/reviews', icon: MessageSquareText },
+    { label: 'Restock Alerts', href: '/thyaga-portal-admin/restock-alerts', icon: BellRing },
     { label: 'Customers', href: '/thyaga-portal-admin/users', icon: Users },
     { label: 'Subscribers', href: '/thyaga-portal-admin/subscribers', icon: Mail },
     { label: 'Administrators', href: '/thyaga-portal-admin/admins', icon: ShieldCheck },
+    ...(adminUser?.role === 'super_admin' ? [{ label: 'Email Settings', href: '/thyaga-portal-admin/email-settings', icon: MailCheck }] : []),
     { label: 'Activity Logs', href: '/thyaga-portal-admin/activity-logs', icon: Activity },
   ];
 
@@ -341,7 +355,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </aside>
 
         {/* Admin Page Content Area */}
-        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 max-w-site w-full mx-auto">
           {children}
         </main>
       </div>

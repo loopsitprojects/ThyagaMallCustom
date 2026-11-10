@@ -3,10 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendOrderPlacedEmails;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\User;
 use App\Models\Voucher;
+use App\Services\ThyagaVoucherService;
+use App\Services\WebxpayService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -44,7 +48,7 @@ class OrderController extends Controller
             foreach ($validated['items'] as $item) {
                 $product = Product::with('images')->lockForUpdate()->findOrFail($item['product_id']);
 
-                if (!$product->is_active) {
+                if (! $product->is_active) {
                     throw ValidationException::withMessages([
                         'items' => ["\"{$product->name}\" is no longer available."],
                     ]);
@@ -81,16 +85,16 @@ class OrderController extends Controller
             $discount = 0.00;
             $voucherCode = null;
             $redemptionId = $validated['voucher_redemption_id'] ?? null;
-            $thyagaService = app(\App\Services\ThyagaVoucherService::class);
+            $thyagaService = app(ThyagaVoucherService::class);
 
             if ($redemptionId) {
                 // The discount must come from a hold this server verified via OTP —
                 // never from an amount supplied by the browser. Each hold is single-use.
                 $heldAmount = Cache::pull(ThyagaVoucherController::holdCacheKey($redemptionId));
 
-                if (!$thyagaService->isConfigured()
+                if (! $thyagaService->isConfigured()
                     || $heldAmount === null
-                    || !$thyagaService->validateHoldStatus($redemptionId)) {
+                    || ! $thyagaService->validateHoldStatus($redemptionId)) {
                     throw ValidationException::withMessages([
                         'voucher_redemption_id' => ['The Thyāga voucher hold has expired or is invalid. Please re-verify your voucher.'],
                     ]);
@@ -98,7 +102,7 @@ class OrderController extends Controller
 
                 $discount = min($subtotal + $shippingFee, (float) $heldAmount);
                 $voucherCode = $validated['voucher_code'] ?? 'THYAGA-VOUCHER';
-            } elseif (!empty($validated['voucher_code'])) {
+            } elseif (! empty($validated['voucher_code'])) {
                 $voucher = Voucher::where('code', strtoupper(trim($validated['voucher_code'])))->first();
                 if ($voucher && $voucher->isValidForAmount($subtotal)) {
                     $discount = $voucher->calculateDiscount($subtotal);
@@ -110,13 +114,13 @@ class OrderController extends Controller
             $total = max(0, ($subtotal - $discount) + $shippingFee);
             // Long random suffix so order numbers (which unlock order details) can't be guessed.
             do {
-                $orderNumber = 'THY-' . date('Ymd') . '-' . strtoupper(Str::random(10));
+                $orderNumber = 'THY-'.now()->format('Ymd').'-'.strtoupper(Str::random(10));
             } while (Order::where('order_number', $orderNumber)->exists());
 
             // Only link the order to an account when that customer is actually signed in.
             // (Emails are unverified, so matching guest orders by email would leak them.)
             $authUser = auth('sanctum')->user();
-            $userId = $authUser instanceof \App\Models\User && $authUser->role === 'customer'
+            $userId = $authUser instanceof User && $authUser->role === 'customer'
                 ? $authUser->id
                 : null;
 
@@ -151,7 +155,7 @@ class OrderController extends Controller
             }
 
             // If order has a held Thyāga redemption and no online gateway pending (COD or fully paid by voucher), complete it immediately
-            if ($redemptionId && !$isOnlinePayment && $thyagaService->isConfigured()) {
+            if ($redemptionId && ! $isOnlinePayment && $thyagaService->isConfigured()) {
                 $thyagaService->completeRedemption($redemptionId, $order->order_number);
             }
 
@@ -167,17 +171,20 @@ class OrderController extends Controller
             ];
 
             if ($isOnlinePayment) {
-                $webxpayService = app(\App\Services\WebxpayService::class);
+                $webxpayService = app(WebxpayService::class);
                 $paymentPayload = $webxpayService->preparePaymentPayload($order);
                 $responseData['payment_url'] = $paymentPayload['gateway_url'];
                 $responseData['payment_params'] = $paymentPayload['params'];
                 $responseData['redirect_required'] = true;
+            } else {
+                // Online payments notify the store once WebXpay confirms the payment instead.
+                DB::afterCommit(fn () => SendOrderPlacedEmails::dispatchAfterResponse($order));
             }
 
             return response()->json([
                 'success' => true,
-                'message' => $isOnlinePayment 
-                    ? 'Order placed. Redirecting to WebXpay secure gateway...' 
+                'message' => $isOnlinePayment
+                    ? 'Order placed. Redirecting to WebXpay secure gateway...'
                     : 'Thank you! Your order has been placed successfully.',
                 'data' => $responseData,
             ], 201);

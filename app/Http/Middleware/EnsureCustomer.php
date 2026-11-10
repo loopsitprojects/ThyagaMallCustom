@@ -17,7 +17,7 @@ class EnsureCustomer
     {
         $user = $request->user();
 
-        if (!$user instanceof User || !$user->tokenCan('customer') || $user->role !== 'customer') {
+        if (! $user instanceof User || ! $user->tokenCan('customer') || $user->role !== 'customer') {
             return response()->json([
                 'success' => false,
                 'message' => 'Customer account required.',

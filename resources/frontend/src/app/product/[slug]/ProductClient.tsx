@@ -6,7 +6,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
   ShoppingBag,
-  Star,
   Truck,
   ShieldCheck,
   RefreshCw,
@@ -20,12 +19,17 @@ import {
   Loader2,
   Heart,
 } from 'lucide-react';
+import OutOfStockBadge from '@/components/product/OutOfStockBadge';
+import RestockNotifyForm from '@/components/product/RestockNotifyForm';
 import { api } from '@/services/api';
 import { Product } from '@/types';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import ProductCard from '@/components/product/ProductCard';
 import { sanitizeHtml } from '@/utils/sanitizeHtml';
+import StarRating from '@/components/product/StarRating';
+import ProductReviews from '@/components/product/ProductReviews';
+import { getAssetUrl } from '@/utils/assets';
 
 export default function ProductClient() {
   const params = useParams();
@@ -134,6 +138,11 @@ export default function ProductClient() {
     setTimeout(() => setIsAdded(false), 2000);
   };
 
+  const showReviews = () => {
+    setActiveTab('reviews');
+    document.getElementById('product-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const handleBuyNow = () => {
     addToCart(product, quantity);
     router.push('/checkout');
@@ -162,13 +171,15 @@ export default function ProductClient() {
         <div className="md:col-span-6 flex flex-col gap-4">
           <div className="relative w-full aspect-square bg-[#fbfbfe] rounded-xl border border-gray-200/80 overflow-hidden">
             <Image
-              src={activeImage || product.primary_image || 'https://placehold.co/600x600/f3f4f6/36135d?text=Thyaga+Mall'}
+              src={getAssetUrl(activeImage || product.primary_image || 'https://placehold.co/600x600/f3f4f6/36135d?text=Thyaga+Mall')}
               alt={product.name}
               fill
               priority
               className="object-contain p-6"
             />
-            {discountPercent > 0 && (
+            {product.stock_quantity <= 0 ? (
+              <OutOfStockBadge className="top-4 left-4 text-xs px-2.5 py-1 rounded-md" />
+            ) : discountPercent > 0 && (
               <div className="absolute top-4 left-4 bg-[#dc2626] text-white font-black text-xs px-2.5 py-1 rounded-md shadow-xs flex items-center gap-1">
                 <Flame className="w-3.5 h-3.5 fill-current" />
                 <span>-{discountPercent}% OFF</span>
@@ -187,7 +198,7 @@ export default function ProductClient() {
                     activeImage === img.image_url ? 'border-[#36135d]' : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <Image src={img.image_url} alt="" fill className="object-cover" />
+                  <Image src={getAssetUrl(img.image_url)} alt="" fill className="object-cover" />
                 </button>
               ))}
             </div>
@@ -197,12 +208,11 @@ export default function ProductClient() {
         {/* Right: Product Details, Pricing, Actions */}
         <div className="md:col-span-6 flex flex-col justify-between space-y-5">
           <div>
-            {/* Category & SKU */}
-            <div className="flex items-center justify-between text-xs text-gray-400 mb-2 font-medium">
+            {/* Category (SKU is internal — shown only in the admin panel) */}
+            <div className="text-xs mb-2 font-medium">
               <span className="text-purple-700 font-bold uppercase tracking-wider">
                 {product.category?.name || 'General Product'}
               </span>
-              <span>SKU: {product.sku || `THY-${product.id}`}</span>
             </div>
 
             {/* Product Title */}
@@ -212,11 +222,18 @@ export default function ProductClient() {
 
             {/* Ratings & Stock Status */}
             <div className="flex items-center gap-4 text-xs mb-4 pb-4 border-b border-gray-100">
-              <div className="flex items-center text-amber-500">
-                <Star className="w-4 h-4 fill-current" />
-                <span className="font-bold text-gray-800 ml-1.5">{product.rating_avg}</span>
-                <span className="text-gray-400 ml-1">({product.reviews_count ?? 0} Customer Reviews)</span>
-              </div>
+              {/* Jumps to the reviews tab */}
+              <button type="button" onClick={showReviews} className="flex items-center gap-1.5 hover:underline cursor-pointer">
+                {product.reviews_count > 0 ? (
+                  <>
+                    <StarRating value={Number(product.rating_avg)} />
+                    <span className="font-bold text-gray-800">{Number(product.rating_avg).toFixed(1)}</span>
+                    <span className="text-gray-400">({product.reviews_count} review{product.reviews_count === 1 ? '' : 's'})</span>
+                  </>
+                ) : (
+                  <span className="text-gray-500">No reviews yet · <span className="font-semibold text-[#6d28d9]">Write a review</span></span>
+                )}
+              </button>
               <span className="text-gray-300">|</span>
               <div>
                 {product.stock_quantity > 0 ? (
@@ -247,9 +264,17 @@ export default function ProductClient() {
                   </>
                 )}
               </div>
-              <p className="text-[11px] text-gray-500 mt-1">
-                Inclusive of all taxes & warranty coverage.
-              </p>
+              <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-purple-100/70 flex-wrap">
+                <p className="text-[11px] text-gray-500">
+                  Inclusive of all taxes & warranty coverage.
+                </p>
+                <Link
+                  href="/terms"
+                  className="text-xs text-gray-500 hover:text-[#36135d] underline underline-offset-2 transition"
+                >
+                  Terms & Conditions Apply
+                </Link>
+              </div>
             </div>
 
             {/* Thyaga Voucher Benefit Callout */}
@@ -264,6 +289,9 @@ export default function ProductClient() {
                 </p>
               </div>
             </div>
+
+            {/* Out of stock: leave an email to hear when it returns */}
+            {product.stock_quantity <= 0 && <RestockNotifyForm key={product.id} productSlug={product.slug} />}
 
             {/* Quantity Selector */}
             <div className="flex items-center gap-4 mb-6">
@@ -345,7 +373,7 @@ export default function ProductClient() {
       </div>
 
       {/* Tabs: Description, Specifications, Reviews */}
-      <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden">
+      <div id="product-tabs" className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden">
         <div className="flex border-b border-gray-200">
           <button
             onClick={() => setActiveTab('desc')}
@@ -398,15 +426,19 @@ export default function ProductClient() {
                   dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.description) }}
                 />
               )}
+              <div className="pt-3">
+                <Link
+                  href="/terms"
+                  className="text-xs text-gray-500 hover:text-[#36135d] underline underline-offset-2 transition"
+                >
+                  Terms & Conditions Apply
+                </Link>
+              </div>
             </div>
           )}
 
           {activeTab === 'specs' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="font-semibold text-gray-500">Product SKU:</span>
-                <span className="font-bold text-gray-900">{product.sku}</span>
-              </div>
               <div className="flex justify-between py-2 border-b border-gray-100">
                 <span className="font-semibold text-gray-500">Brand / Origin:</span>
                 <span className="font-bold text-gray-900">Thyaga Mall Verified</span>
@@ -423,20 +455,7 @@ export default function ProductClient() {
           )}
 
           {activeTab === 'reviews' && (
-            <div className="space-y-4">
-              {product.reviews_count ? (
-                <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                  <div className="text-3xl font-black text-gray-900">{product.rating_avg}</div>
-                  <span className="text-xs text-gray-500">
-                    Based on {product.reviews_count} customer rating{product.reviews_count === 1 ? '' : 's'}
-                  </span>
-                </div>
-              ) : (
-                <div className="bg-gray-50 p-6 rounded-xl border border-gray-100 text-center text-xs text-gray-500">
-                  No reviews yet for this product.
-                </div>
-              )}
-            </div>
+            <ProductReviews slug={product.slug} />
           )}
         </div>
       </div>

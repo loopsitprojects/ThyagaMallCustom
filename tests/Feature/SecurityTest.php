@@ -38,7 +38,7 @@ class SecurityTest extends TestCase
     private function product(array $overrides = []): Product
     {
         return Product::create(array_merge([
-            'name' => 'Test Item', 'slug' => 'test-item-' . uniqid(), 'regular_price' => 5000,
+            'name' => 'Test Item', 'slug' => 'test-item-'.uniqid(), 'regular_price' => 5000,
             'stock_quantity' => 5, 'is_active' => true,
         ], $overrides));
     }

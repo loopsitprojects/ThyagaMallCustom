@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -8,8 +8,7 @@ import { Search, ShoppingBag, Heart, User, ChevronDown, Package, LogOut } from '
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useAuth } from '@/context/AuthContext';
-import { api } from '@/services/api';
-import { Category } from '@/types';
+import { useCategories } from '@/hooks/useCategories';
 import { getAssetUrl } from '@/utils/assets';
 
 export default function Header() {
@@ -19,13 +18,7 @@ export default function Header() {
   const { user, isAuthenticated, logout } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [categories, setCategories] = useState<Category[]>([]);
-
-  useEffect(() => {
-    api.getCategories().then((res) => {
-      if (res.success) setCategories(res.data);
-    }).catch(() => {});
-  }, []);
+  const { categories } = useCategories();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +30,7 @@ export default function Header() {
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-xs">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4 md:gap-8">
+      <div className="max-w-site mx-auto px-4 lg:px-6 py-3 flex items-center justify-between gap-4 md:gap-8">
         {/* Official Thyaga Mall Logo */}
         <Link href="/" className="shrink-0 flex items-center group">
           <Image
@@ -64,9 +57,14 @@ export default function Header() {
             >
               <option value="">All Categories</option>
               {categories.map((cat) => (
-                <option key={cat.id} value={cat.slug}>
-                  {cat.name}
-                </option>
+                <React.Fragment key={cat.id}>
+                  <option value={cat.slug}>{cat.name}</option>
+                  {cat.children?.map((sub) => (
+                    <option key={sub.id} value={sub.slug}>
+                      {'\u00A0\u00A0\u00A0'}{sub.name}
+                    </option>
+                  ))}
+                </React.Fragment>
               ))}
             </select>
             <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2 pointer-events-none" />

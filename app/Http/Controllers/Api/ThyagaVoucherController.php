@@ -26,7 +26,7 @@ class ThyagaVoucherController extends Controller
      */
     public static function holdCacheKey(string $redemptionId): string
     {
-        return 'thyaga_hold:' . hash('sha256', $redemptionId);
+        return 'thyaga_hold:'.hash('sha256', $redemptionId);
     }
 
     /**
@@ -35,7 +35,7 @@ class ThyagaVoucherController extends Controller
      */
     public function details(string $code): JsonResponse
     {
-        if (!$this->service->isConfigured()) {
+        if (! $this->service->isConfigured()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Thyāga Voucher integration is not yet configured. Please set THYAGA_VOUCHER_API_KEY in .env.',
@@ -63,7 +63,7 @@ class ThyagaVoucherController extends Controller
      */
     public function initiate(Request $request): JsonResponse
     {
-        if (!$this->service->isConfigured()) {
+        if (! $this->service->isConfigured()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Thyāga Voucher integration is not configured.',
@@ -94,7 +94,7 @@ class ThyagaVoucherController extends Controller
      */
     public function verifyOtp(Request $request): JsonResponse
     {
-        if (!$this->service->isConfigured()) {
+        if (! $this->service->isConfigured()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Thyāga Voucher integration is not configured.',
@@ -135,7 +135,7 @@ class ThyagaVoucherController extends Controller
      */
     public function cancel(Request $request): JsonResponse
     {
-        if (!$this->service->isConfigured()) {
+        if (! $this->service->isConfigured()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Thyāga Voucher integration is not configured.',
@@ -162,7 +162,7 @@ class ThyagaVoucherController extends Controller
      */
     public function health(): JsonResponse
     {
-        if (!$this->service->isConfigured()) {
+        if (! $this->service->isConfigured()) {
             return response()->json([
                 'status' => 'not_configured',
                 'message' => 'THYAGA_VOUCHER_API_KEY is missing.',

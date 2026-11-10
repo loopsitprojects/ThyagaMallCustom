@@ -17,9 +17,9 @@ export default function TrendingSection() {
 
     async function loadTrending() {
       try {
-        const res = await api.getProducts({ sort: 'popular', per_page: 6 });
-        if (isMounted && res.success && res.data) {
-          setProducts(res.data.slice(0, 6));
+        const res = await api.getHomeSection('trending');
+        if (isMounted && res.success) {
+          setProducts(res.data);
         }
       } catch (err) {
         console.error('Failed to load trending products:', err);

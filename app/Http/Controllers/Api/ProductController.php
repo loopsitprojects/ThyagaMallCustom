@@ -18,8 +18,8 @@ class ProductController extends Controller
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhere('sku', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%");
             });
         }
 
@@ -27,9 +27,7 @@ class ProductController extends Controller
         if ($categorySlug = $request->query('category')) {
             $category = Category::where('slug', $categorySlug)->first();
             if ($category) {
-                $categoryIds = Category::where('parent_id', $category->id)->pluck('id')->toArray();
-                $categoryIds[] = $category->id;
-                $query->whereIn('category_id', $categoryIds);
+                $query->whereIn('category_id', $category->selfAndDescendantIds());
             }
         }
 
@@ -87,11 +85,11 @@ class ProductController extends Controller
     {
         $product = Product::where('slug', $slug)
             ->where('is_active', true)
-            ->with(['category', 'images', 'reviews', 'flashSaleItems' => function ($q) {
+            ->with(['category', 'images', 'flashSaleItems' => function ($q) {
                 $q->whereHas('flashSale', function ($sq) {
                     $sq->where('is_active', true)
-                       ->where('start_time', '<=', now())
-                       ->where('end_time', '>=', now());
+                        ->where('start_time', '<=', now())
+                        ->where('end_time', '>=', now());
                 });
             }])
             ->firstOrFail();

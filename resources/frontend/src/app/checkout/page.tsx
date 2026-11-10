@@ -639,7 +639,7 @@ export default function CheckoutPage() {
                 <div key={item.product.id} className="flex gap-3 text-xs">
                   <div className="relative w-12 h-12 bg-gray-100 rounded-md overflow-hidden shrink-0 border border-gray-200">
                     <Image
-                      src={item.product.primary_image || 'https://placehold.co/100x100/f3f4f6/36135d?text=Item'}
+                      src={getAssetUrl(item.product.primary_image || 'https://placehold.co/100x100/f3f4f6/36135d?text=Item')}
                       alt={item.product.name}
                       fill
                       className="object-cover"

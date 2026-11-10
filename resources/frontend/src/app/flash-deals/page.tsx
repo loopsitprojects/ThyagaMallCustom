@@ -15,8 +15,10 @@ import {
   Loader2,
   ArrowRight,
 } from 'lucide-react';
+import OutOfStockBadge from '@/components/product/OutOfStockBadge';
 import { useCart } from '@/context/CartContext';
 import { useFlashSale } from '@/context/FlashSaleContext';
+import { getAssetUrl } from '@/utils/assets';
 
 export default function FlashDealsPage() {
   const { addToCart } = useCart();
@@ -196,13 +198,15 @@ export default function FlashDealsPage() {
               <Link href={`/product/${product.slug}`} className="flex flex-col flex-1">
                 <div className="relative w-full aspect-square bg-[#fffbfa] overflow-hidden">
                   <Image
-                    src={product.primary_image || (product.images && product.images[0]?.image_url) || 'https://placehold.co/400x400/fff/dc2626?text=Flash+Deal'}
+                    src={getAssetUrl(product.primary_image || (product.images && product.images[0]?.image_url) || 'https://placehold.co/400x400/fff/dc2626?text=Flash+Deal')}
                     alt={product.name}
                     fill
                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 20vw"
                     className="object-contain p-4 group-hover:scale-105 transition-transform duration-300"
                   />
-                  {discountPercent > 0 && (
+                  {product.stock_quantity <= 0 ? (
+                    <OutOfStockBadge className="top-2.5 left-2.5 text-[10px] px-2 py-0.5 rounded" />
+                  ) : discountPercent > 0 && (
                     <div className="absolute top-2.5 left-2.5 bg-[#dc2626] text-white font-black text-xs px-2 py-0.5 rounded shadow-xs flex items-center gap-1 animate-pulse">
                       <Flame className="w-3.5 h-3.5 fill-current" />
                       <span>-{discountPercent}%</span>

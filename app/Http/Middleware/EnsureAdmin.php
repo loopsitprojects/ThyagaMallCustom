@@ -18,7 +18,7 @@ class EnsureAdmin
     {
         $user = $request->user();
 
-        if (!$user instanceof Admin || !$user->tokenCan('admin')) {
+        if (! $user instanceof Admin || ! $user->tokenCan('admin')) {
             return response()->json([
                 'success' => false,
                 'message' => 'Administrator access required.',
@@ -34,7 +34,7 @@ class EnsureAdmin
             ], 403);
         }
 
-        if (!empty($roles) && !in_array($user->role, $roles, true)) {
+        if (! empty($roles) && ! in_array($user->role, $roles, true)) {
             return response()->json([
                 'success' => false,
                 'message' => 'You do not have permission to perform this action.',

@@ -47,6 +47,15 @@ return [
             'report' => false,
         ],
 
+        // Files served straight from public/uploads (e.g. homepage hero banner images).
+        'public_uploads' => [
+            'driver' => 'local',
+            'root' => public_path('uploads'),
+            'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

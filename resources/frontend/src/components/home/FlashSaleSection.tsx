@@ -4,9 +4,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Zap, ArrowRight, Heart, ShoppingBag } from 'lucide-react';
+import OutOfStockBadge from '@/components/product/OutOfStockBadge';
 import { FlashSale } from '@/types';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
+import { getAssetUrl } from '@/utils/assets';
 
 interface FlashSaleSectionProps {
   flashSale?: FlashSale | null;
@@ -153,10 +155,11 @@ export default function FlashSaleSection({ flashSale }: FlashSaleSectionProps) {
           const soldCount = item.quantity_sold ?? Math.floor(((item.percentage_sold ?? 60) * (item.quantity_limit ?? 50)) / 100);
           const limitCount = item.quantity_limit && item.quantity_limit > 0 ? item.quantity_limit : (soldCount + 20);
           const percentClaimed = item.percentage_sold ?? Math.min(100, Math.round((soldCount / limitCount) * 100));
-          const productImage =
+          const productImage = getAssetUrl(
             product.primary_image ||
             (product.images && product.images[0]?.image_url) ||
-            'https://placehold.co/400x400/fff/dc2626?text=Flash+Deal';
+            'https://placehold.co/400x400/fff/dc2626?text=Flash+Deal'
+          );
 
           return (
             <div
@@ -173,8 +176,10 @@ export default function FlashSaleSection({ flashSale }: FlashSaleSectionProps) {
                   className="object-contain p-3 group-hover:scale-105 transition-transform duration-300"
                 />
 
-                {/* Red Discount Tag */}
-                {discountPercent > 0 && (
+                {/* Out of Stock or Red Discount Tag */}
+                {product.stock_quantity <= 0 ? (
+                  <OutOfStockBadge className="top-2 left-2 text-[9px] px-1.5 py-0.5 rounded" />
+                ) : discountPercent > 0 && (
                   <div className="absolute top-2 left-2 bg-[#dc2626] text-white text-[10px] font-black px-1.5 py-0.5 rounded shadow-2xs">
                     -{discountPercent}%
                   </div>

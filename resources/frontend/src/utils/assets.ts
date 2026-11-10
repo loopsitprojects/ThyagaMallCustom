@@ -1,4 +1,4 @@
-export const BASE_PATH = '/ThyagaMall';
+export const BASE_PATH = '/thyaga';
 
 /**
  * Returns the proper subpath URL for public assets when hosted under a subfolder

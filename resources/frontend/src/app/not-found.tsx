@@ -3,8 +3,16 @@
 import React from 'react';
 import Link from 'next/link';
 import { Home, ShoppingBag, Truck, HelpCircle, ArrowLeft, Search } from 'lucide-react';
+import { useCategories, categoryHref } from '@/hooks/useCategories';
 
 export default function NotFound() {
+  const { categories } = useCategories();
+  // Homepage categories from Admin → Categories, plus a link to trending products.
+  const departments = [
+    ...categories.filter((c) => c.is_featured).slice(0, 7).map((c) => ({ label: c.name, href: categoryHref(c) })),
+    { label: 'Trending Deals', href: '/shop?sort=popular' },
+  ];
+
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center py-12 px-4 text-center">
       {/* 404 Graphic / Badge */}
@@ -65,14 +73,7 @@ export default function NotFound() {
           Popular Departments
         </span>
         <div className="flex flex-wrap justify-center gap-2">
-          {[
-            { label: 'Electronics', href: '/shop?category=electronics' },
-            { label: 'Home & Kitchen', href: '/shop?category=home' },
-            { label: 'Fashion & Apparel', href: '/shop?category=fashion' },
-            { label: 'Beauty & Personal Care', href: '/shop?category=beauty' },
-            { label: 'Food & Groceries', href: '/shop?category=food' },
-            { label: 'Trending Deals', href: '/shop?sort=popular' },
-          ].map((cat) => (
+          {departments.map((cat) => (
             <Link
               key={cat.label}
               href={cat.href}

@@ -6,7 +6,7 @@ import Link from 'next/link';
 export default function TopBar() {
   return (
     <div className="hidden md:block bg-[#3a195a] text-white text-[11px] h-9 border-b border-[#4d2575]/40 select-none">
-      <div className="max-w-7xl mx-auto h-full px-4 flex items-center justify-between">
+      <div className="max-w-site mx-auto h-full px-4 flex items-center justify-between">
         {/* Left: Brand title */}
         <div className="flex items-center">
           <Link
@@ -69,22 +69,18 @@ export default function TopBar() {
             >
               FAQ
             </Link>
-            <a
-              href="https://mall.thyaga.lk/contact/"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              href="/contact"
               className="h-full flex items-center px-3 border-l border-white/20 hover:text-white/80 transition-colors"
             >
               CONTACT US
-            </a>
-            <a
-              href="https://mall.thyaga.lk/about-us/"
-              target="_blank"
-              rel="noopener noreferrer"
+            </Link>
+            <Link
+              href="/about"
               className="h-full flex items-center px-3 border-l border-r border-white/20 hover:text-white/80 transition-colors"
             >
               ABOUT US
-            </a>
+            </Link>
           </nav>
         </div>
       </div>

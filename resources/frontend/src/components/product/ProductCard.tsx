@@ -5,10 +5,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShoppingBag, Star, Heart, Check } from 'lucide-react';
+import OutOfStockBadge from '@/components/product/OutOfStockBadge';
 import { Product } from '@/types';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import TiltCard from '@/components/motion/TiltCard';
+import { getAssetUrl } from '@/utils/assets';
 
 interface ProductCardProps {
   product: Product;
@@ -47,7 +49,7 @@ export default function ProductCard({ product, flashPrice }: ProductCardProps) {
 
   const primaryImg = product.primary_image || product.images?.find((img) => img.is_primary)?.image_url || product.images?.[0]?.image_url;
   const imageUrl = !imgError && primaryImg
-    ? primaryImg
+    ? getAssetUrl(primaryImg)
     : 'https://placehold.co/400x400/f3f4f6/36135d?text=Thyaga+Mall';
 
   return (
@@ -67,8 +69,10 @@ export default function ProductCard({ product, flashPrice }: ProductCardProps) {
             onError={() => setImgError(true)}
           />
 
-          {/* Discount Badge */}
-          {discountPercent && discountPercent > 0 && (
+          {/* Out of Stock or Discount Badge */}
+          {product.stock_quantity <= 0 ? (
+            <OutOfStockBadge className="top-2.5 left-2.5 text-[10px] px-2 py-0.5 rounded-full" />
+          ) : discountPercent && discountPercent > 0 && (
             <div className={`absolute top-2.5 left-2.5 text-white font-extrabold text-[11px] px-2 py-0.5 rounded-full shadow-xs ${
               flashPrice !== undefined ? 'bg-[#dc2626] animate-pulse' : 'bg-[#a7144c]'
             }`}>
@@ -112,13 +116,19 @@ export default function ProductCard({ product, flashPrice }: ProductCardProps) {
               {product.name}
             </h3>
 
-            {/* Ratings & Sold */}
-            <div className="flex items-center gap-1.5 mb-2.5">
-              <div className="flex items-center text-amber-500">
-                <Star className="w-3.5 h-3.5 fill-current" />
-                <span className="text-xs font-bold text-gray-800 ml-1">{product.rating_avg}</span>
-              </div>
-              <span className="text-[11px] text-gray-400">({product.reviews_count ?? 0})</span>
+            {/* Rating from approved customer reviews (fixed height keeps cards aligned) */}
+            <div className="flex items-center gap-1.5 mb-2.5 h-4">
+              {product.reviews_count > 0 ? (
+                <>
+                  <div className="flex items-center text-amber-500">
+                    <Star className="w-3.5 h-3.5 fill-current" />
+                    <span className="text-xs font-bold text-gray-800 ml-1">{Number(product.rating_avg).toFixed(1)}</span>
+                  </div>
+                  <span className="text-[11px] text-gray-400">({product.reviews_count})</span>
+                </>
+              ) : (
+                <span className="text-[11px] text-gray-400">No reviews yet</span>
+              )}
             </div>
           </div>
 

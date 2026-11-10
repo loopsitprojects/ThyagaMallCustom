@@ -3,61 +3,47 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, useReducedMotion } from 'motion/react';
-import {
-  Laptop,
-  Home,
-  Shirt,
-  Sparkles,
-  ShoppingBag,
-  Gamepad2,
-  Trophy,
-  Wrench,
-  HeartPulse,
-  BookOpen,
-  Dog,
-  Grid,
-  ChevronRight,
-  ArrowRight,
-  Truck,
-} from 'lucide-react';
-import { Category, HeroSlide } from '@/types';
+import { ChevronRight, ArrowRight, Truck, LayoutGrid } from 'lucide-react';
+import { HeroSlide, HeroBannerImage, HeroMode } from '@/types';
 import { api } from '@/services/api';
 import TiltCard from '@/components/motion/TiltCard';
 import HeroStage, { DEFAULT_HERO_SLIDES } from '@/components/home/HeroStage';
+import HeroImageCarousel from '@/components/home/HeroImageCarousel';
+import CategoryIcon from '@/components/common/CategoryIcon';
+import { useCategories, categoryHref } from '@/hooks/useCategories';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-interface HeroBannerProps {
-  categories?: Category[];
-}
+// Rows that fit the sidebar's fixed height; the last row links to the full catalogue.
+const SIDEBAR_ROWS = 11;
 
-const CATEGORY_ITEMS = [
-  { name: 'Electronics', slug: 'electronics', icon: Laptop },
-  { name: 'Home & Kitchen', slug: 'home', icon: Home },
-  { name: 'Fashion & Apparel', slug: 'fashion', icon: Shirt },
-  { name: 'Beauty & Personal Care', slug: 'beauty', icon: Sparkles },
-  { name: 'Groceries & Daily Needs', slug: 'food', icon: ShoppingBag },
-  { name: 'Toys, Kids & Baby', slug: 'toys', icon: Gamepad2 },
-  { name: 'Sports & Outdoors', slug: 'sports', icon: Trophy },
-  { name: 'Automotive & Tools', slug: 'automotive', icon: Wrench },
-  { name: 'Health & Wellness', slug: 'health', icon: HeartPulse },
-  { name: 'Stationery & Books', slug: 'books', icon: BookOpen },
-  { name: 'Pets', slug: 'pets', icon: Dog },
-  { name: 'More Categories', slug: 'shop', icon: Grid },
-];
+const HERO_SIZE = 'lg:col-span-6 min-h-[230px] h-[260px] sm:h-[340px] lg:h-[425px]';
 
-export default function HeroBanner({ categories }: HeroBannerProps) {
+export default function HeroBanner() {
   const [slides, setSlides] = useState<HeroSlide[]>(DEFAULT_HERO_SLIDES);
+  const [images, setImages] = useState<HeroBannerImage[]>([]);
+  // null until the API answers, so the 3D scene never flashes before an image carousel.
+  const [mode, setMode] = useState<HeroMode | null>(null);
   const reduce = useReducedMotion();
+  const { categories } = useCategories();
+  const sidebarItems = [
+    ...categories.slice(0, SIDEBAR_ROWS).map((cat) => ({ key: `c${cat.id}`, name: cat.name, href: categoryHref(cat), icon: <CategoryIcon icon={cat.icon} className="w-3.5 h-3.5" /> })),
+    { key: 'all', name: 'All Categories', href: '/shop', icon: <LayoutGrid className="w-3.5 h-3.5" /> },
+  ];
 
-  // Slides are managed in Admin → Hero Slides; keep the built-in ones if the API is unavailable.
+  // Mode, slides and images are managed in Admin → Hero Slides; fall back to the built-in 3D slides if the API is unavailable.
   useEffect(() => {
     let cancelled = false;
-    api.getHeroSlides()
+    api.getHeroBanner()
       .then((res) => {
-        if (!cancelled && res.success && res.data.length > 0) setSlides(res.data);
+        if (cancelled || !res.success) return;
+        if (res.data.slides.length > 0) setSlides(res.data.slides);
+        setImages(res.data.images);
+        setMode(res.data.mode);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) setMode('3d');
+      });
     return () => {
       cancelled = true;
     };
@@ -74,24 +60,25 @@ export default function HeroBanner({ categories }: HeroBannerProps) {
           className="hidden lg:block lg:col-span-3 bg-white rounded-xl border border-gray-200 shadow-2xs p-2.5 flex flex-col justify-between h-[425px]"
         >
           <div className="space-y-0.5">
-            {CATEGORY_ITEMS.map((cat, idx) => {
-              const Icon = cat.icon;
+            {sidebarItems.map((item, idx) => {
               return (
                 <motion.div
-                  key={cat.name}
+                  key={item.key}
                   initial={reduce ? false : { opacity: 0, x: -12 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.15 + idx * 0.035, duration: 0.45, ease: EASE }}
                 >
                   <Link
-                    href={`/shop?category=${cat.slug}`}
+                    href={item.href}
                     className="relative flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium text-gray-700 hover:text-[#36135d] transition group overflow-hidden"
                   >
                     {/* Sliding highlight */}
                     <span className="absolute inset-0 bg-linear-to-r from-purple-100 to-purple-50/0 -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out rounded-lg" />
                     <div className="relative flex items-center gap-2.5">
-                      <Icon className="w-3.5 h-3.5 text-gray-400 group-hover:text-[#36135d] group-hover:scale-125 group-hover:-rotate-12 transition-transform duration-300" />
-                      <span className="group-hover:translate-x-0.5 transition-transform duration-300">{cat.name}</span>
+                      <span className="text-gray-400 group-hover:text-[#36135d] group-hover:scale-125 group-hover:-rotate-12 transition-transform duration-300 flex">
+                        {item.icon}
+                      </span>
+                      <span className="group-hover:translate-x-0.5 transition-transform duration-300">{item.name}</span>
                     </div>
                     <ChevronRight className="relative w-3 h-3 text-gray-300 group-hover:text-[#36135d] group-hover:translate-x-0.5 transition" />
                   </Link>
@@ -101,11 +88,17 @@ export default function HeroBanner({ categories }: HeroBannerProps) {
           </div>
         </motion.div>
 
-        {/* Center Column: 3D Hero Stage */}
-        <HeroStage
-          slides={slides}
-          className="lg:col-span-6 min-h-[230px] h-[260px] sm:h-[340px] lg:h-[425px]"
-        />
+        {/* Center Column: 3D Hero Stage or uploaded image carousel */}
+        {mode === null ? (
+          <div
+            aria-hidden
+            className={`${HERO_SIZE} rounded-2xl bg-linear-to-br from-[#1a0033] via-[#2e0a5c] to-[#5b1a8f] animate-pulse`}
+          />
+        ) : mode === 'images' && images.length > 0 ? (
+          <HeroImageCarousel images={images} className={HERO_SIZE} />
+        ) : (
+          <HeroStage slides={slides} className={HERO_SIZE} />
+        )}
 
         {/* Right Column: 2 Promo Cards */}
         <motion.div

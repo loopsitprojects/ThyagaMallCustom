@@ -32,9 +32,9 @@ class AdminActivityLogController extends Controller
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('description', 'like', "%{$search}%")
-                  ->orWhere('admin_name', 'like', "%{$search}%")
-                  ->orWhere('ip_address', 'like', "%{$search}%")
-                  ->orWhere('entity_id', 'like', "%{$search}%");
+                    ->orWhere('admin_name', 'like', "%{$search}%")
+                    ->orWhere('ip_address', 'like', "%{$search}%")
+                    ->orWhere('entity_id', 'like', "%{$search}%");
             });
         }
 

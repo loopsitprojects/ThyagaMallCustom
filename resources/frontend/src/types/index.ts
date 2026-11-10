@@ -6,12 +6,41 @@ export interface Category {
   image: string | null;
   icon: string | null;
   description: string | null;
+  subtitle?: string | null;
+  color_from?: string | null;
+  color_to?: string | null;
   sort_order: number;
   is_featured: boolean;
+  show_in_menu?: boolean;
   is_active: boolean;
   products_count?: number;
+  /** Products in this category plus all of its sub-categories */
+  total_products_count?: number;
+  children_count?: number;
   children?: Category[];
 }
+
+export type CategoryInput = Partial<Pick<Category,
+  'name' | 'slug' | 'parent_id' | 'subtitle' | 'description' | 'icon' | 'color_from' | 'color_to' |
+  'image' | 'sort_order' | 'is_active' | 'is_featured' | 'show_in_menu'>>;
+
+export interface Brand {
+  id: number;
+  name: string;
+  slug: string;
+  logo?: string | null;
+  website_url?: string | null;
+  description?: string | null;
+  is_featured: boolean;
+  is_active: boolean;
+  sort_order: number;
+  products_count?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type BrandInput = Partial<Pick<Brand,
+  'name' | 'slug' | 'logo' | 'website_url' | 'description' | 'is_featured' | 'is_active' | 'sort_order'>>;
 
 export interface ProductImage {
   id: number;
@@ -43,6 +72,7 @@ export interface Product {
   merchant_id?: number | null;
   merchant?: Merchant;
   category?: Category;
+  brand?: Brand;
   images?: ProductImage[];
 }
 
@@ -263,3 +293,102 @@ export interface HeroSlide {
 }
 
 export type HeroSlideInput = Omit<HeroSlide, 'id' | 'sort_order' | 'created_at' | 'updated_at'>;
+
+/** '3d' = animated gift-box slides, 'images' = uploaded image carousel */
+export type HeroMode = '3d' | 'images';
+
+export interface HeroBannerImage {
+  id: number;
+  image_path: string;
+  /** Site-relative URL, e.g. /uploads/hero/abc.jpg — wrap with getAssetUrl() */
+  image_url: string;
+  alt_text?: string | null;
+  /** Headline shown over the image, e.g. "Electronics" */
+  title?: string | null;
+  /** Supporting text; line breaks are kept */
+  subtitle?: string | null;
+  /** Button label, e.g. "Shop Electronics" (shown only when `link` is set) */
+  cta_text?: string | null;
+  link?: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
+/** An email waiting to hear when an out-of-stock product returns */
+export interface RestockRequest {
+  id: number;
+  product_id: number;
+  email: string;
+  /** When the back-in-stock email was sent; null while still waiting */
+  notified_at: string | null;
+  created_at: string;
+}
+
+export interface ProductWithRestockRequests extends Product {
+  restock_requests: RestockRequest[];
+}
+
+/** Homepage product sections whose products are picked in Admin → Homepage Sections */
+export type HomeSection = 'trending' | 'best_sellers';
+
+/** Storefront welcome pop-up configured in Admin → Onboarding Ad */
+export interface OnboardingAd {
+  enabled: boolean;
+  /** 'split' = image + text side by side, 'image' = clickable image only */
+  layout: 'split' | 'image';
+  badge?: string | null;
+  title?: string | null;
+  body?: string | null;
+  coupon_code?: string | null;
+  cta_text?: string | null;
+  cta_link?: string | null;
+  dismiss_text?: string | null;
+  accent_color: string;
+  /** Site-relative URL — wrap with getAssetUrl() */
+  image_url?: string | null;
+  delay_seconds: number;
+  /** once = until the ad changes, daily = at most once a day, session = once per browser tab session */
+  frequency: 'once' | 'daily' | 'session';
+  pages: 'all' | 'home';
+  /** Increases on every admin save so a changed ad is shown again */
+  version: number;
+}
+
+export type OnboardingAdInput = Omit<OnboardingAd, 'image_url' | 'version'>;
+
+export interface HeroBannerConfig {
+  mode: HeroMode;
+  slides: HeroSlide[];
+  images: HeroBannerImage[];
+}
+
+export interface ProductReview {
+  id: number;
+  product_id?: number;
+  user_name: string;
+  /** Only present in admin responses */
+  user_email?: string;
+  rating: number;
+  title?: string | null;
+  comment: string;
+  is_approved?: boolean;
+  is_verified_purchase: boolean;
+  created_at: string;
+  updated_at?: string;
+  product?: { id: number; name: string; slug: string } | null;
+}
+
+export interface ReviewSummary {
+  average: number;
+  count: number;
+  /** Number of approved reviews per star rating, keyed "5" … "1" */
+  distribution: Record<string, number>;
+}
+
+export interface OrderEmailRecipient {
+  id: number;
+  email: string;
+  name: string | null;
+  is_active: boolean;
+  created_at: string;
+}

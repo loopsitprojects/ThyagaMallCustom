@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/services/api';
 import { Merchant, Product } from '@/types';
+import { getAssetUrl } from '@/utils/assets';
 
 export default function AdminMerchantsPage() {
   const [merchants, setMerchants] = useState<Merchant[]>([]);
@@ -1089,7 +1090,7 @@ export default function AdminMerchantsPage() {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden relative shrink-0">
                           <Image
-                            src={p.primary_image || 'https://placehold.co/100x100?text=Product'}
+                            src={getAssetUrl(p.primary_image || 'https://placehold.co/100x100?text=Product')}
                             alt=""
                             fill
                             className="object-cover"

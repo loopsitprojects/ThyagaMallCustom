@@ -2,15 +2,18 @@
 
 namespace App\Services;
 
+use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Exception;
 
 class ThyagaVoucherService
 {
     protected string $mode;
+
     protected string $apiKey;
+
     protected string $baseUrl;
+
     protected int $timeout;
 
     /**
@@ -33,13 +36,13 @@ class ThyagaVoucherService
         $this->mode = config('thyaga.mode', 'live');
         $this->apiKey = config('thyaga.api_key', '');
         $endpoints = config('thyaga.endpoints', []);
-        
+
         $rawUrl = $this->mode === 'live'
             ? ($endpoints['live'] ?? '')
             : ($endpoints['sandbox'] ?? '');
-        
+
         // Ensure trailing slash when configured
-        $this->baseUrl = !empty($rawUrl) ? rtrim($rawUrl, '/') . '/' : '';
+        $this->baseUrl = ! empty($rawUrl) ? rtrim($rawUrl, '/').'/' : '';
         $this->timeout = config('thyaga.timeout', 15);
     }
 
@@ -48,7 +51,7 @@ class ThyagaVoucherService
      */
     public function isConfigured(): bool
     {
-        return !empty($this->apiKey) && !empty($this->baseUrl);
+        return ! empty($this->apiKey) && ! empty($this->baseUrl);
     }
 
     /**
@@ -56,11 +59,11 @@ class ThyagaVoucherService
      */
     protected function request(string $endpoint, string $method = 'GET', array $data = []): array
     {
-        if (!$this->isConfigured()) {
+        if (! $this->isConfigured()) {
             throw new Exception('Thyāga API Key is not configured in backend settings (.env).');
         }
 
-        $url = $this->baseUrl . ltrim($endpoint, '/');
+        $url = $this->baseUrl.ltrim($endpoint, '/');
 
         try {
             $client = Http::withHeaders([
@@ -70,7 +73,7 @@ class ThyagaVoucherService
             ])->timeout($this->timeout);
 
             $response = match (strtoupper($method)) {
-                'POST' => $client->post($url, empty($data) ? (object)[] : $data),
+                'POST' => $client->post($url, empty($data) ? (object) [] : $data),
                 'PUT' => $client->put($url, $data),
                 'DELETE' => $client->delete($url, $data),
                 default => $client->get($url, $data),
@@ -96,7 +99,7 @@ class ThyagaVoucherService
 
             // Extract error message
             $errorCode = $body['code'] ?? $body['message'] ?? $body['error'] ?? 'UNKNOWN_ERROR';
-            $userMessage = self::ERROR_MESSAGES[$errorCode] 
+            $userMessage = self::ERROR_MESSAGES[$errorCode]
                 ?? ($body['message'] ?? $body['error'] ?? "Thyāga request failed (HTTP {$statusCode})");
 
             return [
@@ -135,9 +138,9 @@ class ThyagaVoucherService
     public function getVoucherDetails(string $voucherCode): array
     {
         $code = trim($voucherCode);
-        $result = $this->request('getVoucherDetails/' . rawurlencode($code), 'GET');
+        $result = $this->request('getVoucherDetails/'.rawurlencode($code), 'GET');
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return $result;
         }
 
@@ -214,12 +217,12 @@ class ThyagaVoucherService
             'amount' => round($amount, 2),
         ]);
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return $result;
         }
 
         $redemptionId = $result['data']['redemptionId'] ?? null;
-        if (!$redemptionId) {
+        if (! $redemptionId) {
             return [
                 'success' => false,
                 'status_code' => 500,
@@ -259,7 +262,7 @@ class ThyagaVoucherService
             'otp' => (string) $cleanOtp,
         ]);
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return $result;
         }
 
@@ -290,13 +293,14 @@ class ThyagaVoucherService
     public function validateHoldStatus(string $redemptionId): bool
     {
         try {
-            $result = $this->request(rawurlencode($redemptionId) . '/validateStatus', 'GET');
+            $result = $this->request(rawurlencode($redemptionId).'/validateStatus', 'GET');
             if ($result['success']) {
                 $status = strtoupper($result['data']['status'] ?? '');
-                return ($status === 'OK' || $status === 'PROCESSING');
+
+                return $status === 'OK' || $status === 'PROCESSING';
             }
         } catch (\Throwable $e) {
-            Log::error('Thyāga validateHoldStatus failed: ' . $e->getMessage());
+            Log::error('Thyāga validateHoldStatus failed: '.$e->getMessage());
         }
 
         return false;
@@ -326,7 +330,7 @@ class ThyagaVoucherService
      */
     public function cancelRedemption(string $redemptionId): array
     {
-        $result = $this->request('cancel-redemption/' . rawurlencode($redemptionId), 'POST', []);
+        $result = $this->request('cancel-redemption/'.rawurlencode($redemptionId), 'POST', []);
 
         Log::info('Thyāga cancelRedemption executed', [
             'redemption_id' => $redemptionId,
@@ -341,17 +345,17 @@ class ThyagaVoucherService
      */
     public function maskPhone(?string $phone): string
     {
-        if (!$phone) {
+        if (! $phone) {
             return '';
         }
         $clean = preg_replace('/[^\d]/', '', $phone);
         $len = strlen($clean);
 
         if ($len >= 10) {
-            return substr($clean, 0, 4) . '****' . substr($clean, -3);
+            return substr($clean, 0, 4).'****'.substr($clean, -3);
         }
         if ($len >= 7) {
-            return substr($clean, 0, 3) . '***' . substr($clean, -2);
+            return substr($clean, 0, 3).'***'.substr($clean, -2);
         }
 
         return $phone;

@@ -25,14 +25,14 @@ export const metadata: Metadata = {
   description: 'Shop authentic electronics, home essentials, beauty, and food products with Thyaga Gift Vouchers. Enjoy 24H flash deals and free islandwide shipping on orders over Rs. 2,999.',
   icons: {
     icon: [
-      { url: '/ThyagaMall/favicon.ico', sizes: 'any' },
-      { url: '/ThyagaMall/favicon.png', type: 'image/png', sizes: '32x32' },
-      { url: '/ThyagaMall/icon-192.png', type: 'image/png', sizes: '192x192' },
+      { url: '/thyaga/favicon.ico', sizes: 'any' },
+      { url: '/thyaga/favicon.png', type: 'image/png', sizes: '32x32' },
+      { url: '/thyaga/icon-192.png', type: 'image/png', sizes: '192x192' },
     ],
     apple: [
-      { url: '/ThyagaMall/apple-touch-icon.png', sizes: '180x180' },
+      { url: '/thyaga/apple-touch-icon.png', sizes: '180x180' },
     ],
-    shortcut: ['/ThyagaMall/favicon.ico'],
+    shortcut: ['/thyaga/favicon.ico'],
   },
 };
 

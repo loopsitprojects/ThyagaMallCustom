@@ -19,6 +19,7 @@ import {
 import { api } from '@/services/api';
 import { HeroSlide, HeroSlideInput } from '@/types';
 import HeroStage, { DEFAULT_HERO_SLIDES } from '@/components/home/HeroStage';
+import HeroCarouselManager from './HeroCarouselManager';
 
 const EMPTY_SLIDE: HeroSlideInput = {
   title_line1: '',
@@ -232,6 +233,14 @@ export default function AdminHeroSlidesPage() {
           <Plus className="w-4 h-4" />
           <span>Add Slide</span>
         </button>
+      </div>
+
+      {/* 3D banner vs. image carousel switch, and the carousel's images */}
+      <HeroCarouselManager />
+
+      <div className="pt-2">
+        <h2 className="text-base font-black text-gray-900">3D Banner Slides</h2>
+        <p className="text-xs text-gray-500">Used when the hero style is set to 3D Animated Banner</p>
       </div>
 
       {/* Feedback Toast */}

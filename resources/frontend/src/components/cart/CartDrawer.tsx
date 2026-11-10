@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, Truck, Tag, CheckCircle2 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { getAssetUrl } from '@/utils/assets';
 
 export default function CartDrawer() {
   const {
@@ -120,7 +121,7 @@ export default function CartDrawer() {
                 >
                   <div className="relative w-18 h-18 bg-gray-100 rounded-md overflow-hidden shrink-0 border border-gray-200">
                     <Image
-                      src={item.product.primary_image || 'https://placehold.co/100x100/f3f4f6/36135d?text=Thyaga'}
+                      src={getAssetUrl(item.product.primary_image || 'https://placehold.co/100x100/f3f4f6/36135d?text=Thyaga')}
                       alt={item.product.name}
                       fill
                       className="object-cover"

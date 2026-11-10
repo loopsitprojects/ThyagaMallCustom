@@ -21,7 +21,7 @@ class AdminAuthController extends Controller
 
         $admin = Admin::where('email', $request->email)->first();
 
-        if (!$admin || !Hash::check($request->password, $admin->password)) {
+        if (! $admin || ! Hash::check($request->password, $admin->password)) {
             throw ValidationException::withMessages([
                 'email' => ['Invalid admin credentials provided.'],
             ]);
@@ -62,6 +62,7 @@ class AdminAuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         $admin = $request->user();
+
         return response()->json([
             'success' => true,
             'admin' => $admin,
