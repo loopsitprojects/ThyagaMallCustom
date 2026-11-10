@@ -25,8 +25,11 @@ import {
   X,
   Sparkles,
   Check,
+  Store,
+  MapPin,
 } from 'lucide-react';
 import { ThyagaVoucherDetails, ThyagaRedemption } from '@/types';
+import { STORE_PICKUP, type DeliveryMethod } from '@/utils/shipping';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -41,6 +44,11 @@ export default function CheckoutPage() {
     removeVoucher,
     clearCart,
   } = useCart();
+
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('delivery');
+  const isPickup = deliveryMethod === 'pickup';
+  // Store pickup has no delivery charge (the server applies the same rule).
+  const orderShippingFee = isPickup ? 0 : shippingFee;
 
   const [formData, setFormData] = useState({
     customer_name: '',
@@ -89,11 +97,13 @@ export default function CheckoutPage() {
   }, [resendCooldown]);
 
   // Calculated effective discount and order total
-  const effectiveDiscount = thyagaRedemption
-    ? thyagaRedemption.amount
-    : (appliedVoucher ? voucherDiscount : 0);
+  // Capped at the order value, as the server does, e.g. when switching to pickup after a voucher hold.
+  const effectiveDiscount = Math.min(
+    subtotal + orderShippingFee,
+    thyagaRedemption ? thyagaRedemption.amount : (appliedVoucher ? voucherDiscount : 0)
+  );
 
-  const effectiveTotal = Math.max(0, (subtotal - effectiveDiscount) + shippingFee);
+  const effectiveTotal = Math.max(0, (subtotal - effectiveDiscount) + orderShippingFee);
 
   // Auto-switch payment method if voucher covers 100% of order
   useEffect(() => {
@@ -145,7 +155,7 @@ export default function CheckoutPage() {
       const res = await api.getThyagaVoucherDetails(code);
       if (res.success && res.data) {
         setThyagaDetails(res.data);
-        const maxRedeemable = Math.min(res.data.amount, subtotal + shippingFee);
+        const maxRedeemable = Math.min(res.data.amount, subtotal + orderShippingFee);
         setRedeemAmountInput(maxRedeemable);
         setVoucherStep('details');
       } else {
@@ -183,7 +193,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    const maxRedeemable = Math.min(thyagaDetails.amount, subtotal + shippingFee);
+    const maxRedeemable = Math.min(thyagaDetails.amount, subtotal + orderShippingFee);
     if (amountNum > maxRedeemable) {
       setVoucherError(`Amount cannot exceed Rs. ${maxRedeemable.toLocaleString('en-US', { minimumFractionDigits: 2 })}`);
       return;
@@ -297,9 +307,14 @@ export default function CheckoutPage() {
         customer_name: formData.customer_name,
         customer_email: formData.customer_email,
         customer_phone: formData.customer_phone,
-        shipping_address: formData.shipping_address,
-        shipping_city: formData.shipping_city,
-        shipping_postal_code: formData.shipping_postal_code || undefined,
+        delivery_method: deliveryMethod,
+        ...(isPickup
+          ? {}
+          : {
+              shipping_address: formData.shipping_address,
+              shipping_city: formData.shipping_city,
+              shipping_postal_code: formData.shipping_postal_code || undefined,
+            }),
         items: items.map((item) => ({
           product_id: item.product.id,
           quantity: item.quantity,
@@ -450,6 +465,66 @@ export default function CheckoutPage() {
             </div>
 
             <div>
+              <span className="block text-xs font-semibold text-gray-700 mb-1.5">How would you like to get your order? *</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" role="radiogroup" aria-label="Delivery method">
+                {([
+                  {
+                    value: 'delivery',
+                    icon: Truck,
+                    title: 'Home Delivery',
+                    detail: shippingFee === 0 ? 'Free islandwide delivery' : `Islandwide courier · Rs. ${shippingFee.toLocaleString()}`,
+                  },
+                  {
+                    value: 'pickup',
+                    icon: Store,
+                    title: 'Store Pickup',
+                    detail: 'Free · collect from our Colombo 05 store',
+                  },
+                ] as const).map((option) => {
+                  const Icon = option.icon;
+                  const isSelected = deliveryMethod === option.value;
+                  return (
+                    <label
+                      key={option.value}
+                      className={`flex items-start gap-3 p-3.5 rounded-xl border-2 transition cursor-pointer ${
+                        isSelected ? 'border-[#36135d] bg-purple-50/50' : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="delivery_method"
+                        value={option.value}
+                        checked={isSelected}
+                        onChange={() => setDeliveryMethod(option.value)}
+                        className="mt-0.5 text-[#36135d] focus:ring-[#36135d]"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="flex items-center gap-1.5 text-xs font-bold text-gray-900">
+                          <Icon className="w-4 h-4 text-[#36135d] shrink-0" />
+                          {option.title}
+                        </span>
+                        <p className="text-[11px] text-gray-500 mt-0.5">{option.detail}</p>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {isPickup ? (
+              <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-xs text-emerald-900">
+                <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <strong className="block font-bold">{STORE_PICKUP.name}</strong>
+                  <span className="block">{STORE_PICKUP.address}</span>
+                  <span className="block text-[11px] text-emerald-800">
+                    We&apos;ll call you on the number above when your order is ready to collect. Please bring your order number.
+                  </span>
+                </div>
+              </div>
+            ) : (
+            <>
+            <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1">Street Address *</label>
               <input
                 type="text"
@@ -485,12 +560,16 @@ export default function CheckoutPage() {
                 />
               </div>
             </div>
+            </>
+            )}
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Delivery Notes / Instructions</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                {isPickup ? 'Order Notes' : 'Delivery Notes / Instructions'}
+              </label>
               <textarea
                 rows={2}
-                placeholder="e.g. Call before delivery, drop at gate"
+                placeholder={isPickup ? 'e.g. Someone else will collect on my behalf' : 'e.g. Call before delivery, drop at gate'}
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-hidden focus:border-[#36135d]"
@@ -537,14 +616,16 @@ export default function CheckoutPage() {
                     />
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-gray-900">Cash on Delivery (COD)</span>
+                        <span className="text-xs font-bold text-gray-900">{isPickup ? 'Pay at Store' : 'Cash on Delivery (COD)'}</span>
                         {effectiveDiscount > 0 && (
                           <span className="text-[11px] font-bold text-purple-900 bg-purple-100 px-2 py-0.5 rounded">
                             Pay Rs. {effectiveTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-gray-500 mt-0.5">Pay remaining cash upon safe delivery to your doorstep.</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        {isPickup ? 'Pay when you collect your order at the store.' : 'Pay remaining cash upon safe delivery to your doorstep.'}
+                      </p>
                     </div>
                   </label>
 
@@ -741,17 +822,17 @@ export default function CheckoutPage() {
                       <input
                         type="number"
                         min="1"
-                        max={Math.min(thyagaDetails.amount, subtotal + shippingFee)}
+                        max={Math.min(thyagaDetails.amount, subtotal + orderShippingFee)}
                         value={redeemAmountInput}
                         onChange={(e) => setRedeemAmountInput(e.target.value)}
                         className="w-full px-3 py-1.5 text-xs bg-white border border-gray-300 rounded-lg font-bold text-gray-900 focus:outline-hidden focus:border-[#36135d]"
                       />
                       <button
                         type="button"
-                        onClick={() => setRedeemAmountInput(Math.min(thyagaDetails.amount, subtotal + shippingFee))}
+                        onClick={() => setRedeemAmountInput(Math.min(thyagaDetails.amount, subtotal + orderShippingFee))}
                         className="text-[10px] font-bold text-[#36135d] hover:underline whitespace-nowrap px-1"
                       >
-                        Max (Rs. {Math.min(thyagaDetails.amount, subtotal + shippingFee).toLocaleString()})
+                        Max (Rs. {Math.min(thyagaDetails.amount, subtotal + orderShippingFee).toLocaleString()})
                       </button>
                     </div>
                   </div>
@@ -909,12 +990,12 @@ export default function CheckoutPage() {
               )}
 
               <div className="flex justify-between">
-                <span>Shipping Fee</span>
-                {shippingFee === 0 ? (
-                  <span className="font-bold text-emerald-600 uppercase">FREE DELIVERY</span>
+                <span>{isPickup ? 'Store Pickup' : 'Shipping Fee'}</span>
+                {orderShippingFee === 0 ? (
+                  <span className="font-bold text-emerald-600 uppercase">{isPickup ? 'FREE' : 'FREE DELIVERY'}</span>
                 ) : (
                   <span className="font-semibold text-gray-900">
-                    Rs. {shippingFee.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    Rs. {orderShippingFee.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </span>
                 )}
               </div>

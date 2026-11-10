@@ -167,6 +167,43 @@ export interface OrderItem {
   unit_price: number;
   quantity: number;
   total_price: number;
+  product?: Product;
+}
+
+export interface MerchantWaybillItem {
+  id: number;
+  product_id: number;
+  product_name: string;
+  sku: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+}
+
+export interface MerchantWaybill {
+  merchant: {
+    id: number | null;
+    name: string;
+    code: string;
+    phone: string;
+    contact_person?: string;
+    email?: string;
+    address?: string;
+    city?: string;
+  };
+  order_no: string;
+  order_id: number;
+  date: string;
+  delivery_date: string;
+  delivery_address: string;
+  items: MerchantWaybillItem[];
+  subtotal: number;
+  delivery_charges: number;
+  grand_total: number;
+  store_address: string;
+  dispatch_contact: string;
+  pickup_label: string;
+  delivery_label: string;
 }
 
 export interface Order {
@@ -178,6 +215,7 @@ export interface Order {
   shipping_address: string;
   shipping_city: string;
   shipping_postal_code?: string;
+  delivery_method?: 'delivery' | 'pickup';
   subtotal: number | string;
   discount: number | string;
   shipping_fee: number | string;
@@ -391,4 +429,15 @@ export interface OrderEmailRecipient {
   name: string | null;
   is_active: boolean;
   created_at: string;
+}
+
+/** The store customers collect "Store pickup" orders from (Admin → Store Pickup). */
+export interface StorePickup {
+  enabled: boolean;
+  name: string;
+  address: string;
+  city: string;
+  phone: string | null;
+  opening_hours: string | null;
+  instructions: string | null;
 }

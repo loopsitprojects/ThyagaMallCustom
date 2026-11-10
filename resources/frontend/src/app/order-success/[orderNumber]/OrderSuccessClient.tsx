@@ -317,9 +317,14 @@ export default function OrderSuccessClient() {
             <div className="bg-gray-50/80 rounded-2xl p-4 border border-gray-100 space-y-2">
               <div className="font-bold text-gray-700 uppercase tracking-wider text-[10px] flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-[#36135d]" />
-                <span>Delivery Address</span>
+                <span>{order.delivery_method === 'pickup' ? 'Store Pickup' : 'Delivery Address'}</span>
               </div>
               <div className="font-semibold text-gray-900">{order.customer_name}</div>
+              {order.delivery_method === 'pickup' && (
+                <div className="text-[11px] text-emerald-700 font-semibold">
+                  Collect from our store. We&apos;ll call you when it&apos;s ready.
+                </div>
+              )}
               <div className="text-gray-600 leading-relaxed">
                 {order.shipping_address}, {order.shipping_city}
                 {order.shipping_postal_code ? ` - ${order.shipping_postal_code}` : ''}
@@ -377,7 +382,7 @@ export default function OrderSuccessClient() {
             )}
 
             <div className="flex justify-between text-gray-600">
-              <span>Shipping & Delivery Fee:</span>
+              <span>{order.delivery_method === 'pickup' ? 'Store Pickup:' : 'Shipping & Delivery Fee:'}</span>
               <span className="font-semibold text-gray-900">
                 {Number(order.shipping_fee) === 0 ? (
                   <span className="text-emerald-600 font-bold">FREE</span>

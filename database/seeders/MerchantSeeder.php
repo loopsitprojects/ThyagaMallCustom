@@ -139,6 +139,22 @@ class MerchantSeeder extends Seeder
                 'status' => 'active',
                 'is_featured' => true,
             ],
+            [
+                'name' => 'Living Styles',
+                'slug' => 'living-styles',
+                'code' => '0015LS',
+                'business_type' => 'Home & Living Essentials',
+                'contact_person' => 'Joy',
+                'email' => 'joy@livingstyles.lk',
+                'phone' => '0710982629',
+                'city' => 'Colombo',
+                'address' => 'Colombo',
+                'commission_rate' => 10.00,
+                'logo_url' => 'https://ui-avatars.com/api/?name=Living+Styles&background=1e293b&color=fff&size=200',
+                'description' => 'Home lifestyle goods, safety gadgets, and modern living accessories.',
+                'status' => 'active',
+                'is_featured' => true,
+            ],
         ];
 
         foreach ($merchants as $data) {

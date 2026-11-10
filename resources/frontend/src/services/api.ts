@@ -23,10 +23,12 @@ import {
   ProductWithRestockRequests,
   OnboardingAd,
   OnboardingAdInput,
+  StorePickup,
   CategoryInput,
   ProductReview,
   ReviewSummary,
   OrderEmailRecipient,
+  MerchantWaybill,
 } from '@/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001/api';
@@ -660,6 +662,25 @@ export const api = {
     });
   },
 
+  // Checkout store pickup location (null when switched off)
+  async getStorePickup(): Promise<{ success: boolean; data: StorePickup | null }> {
+    return fetcher('/store-pickup');
+  },
+
+  async getAdminStorePickup(token: string): Promise<{ success: boolean; data: StorePickup }> {
+    return fetcher('/admin/store-pickup', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+
+  async updateAdminStorePickup(token: string, data: StorePickup): Promise<{ success: boolean; message: string; data: StorePickup }> {
+    return fetcher('/admin/store-pickup', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+  },
+
   // Newsletter
   async subscribeNewsletter(email: string, source: string = 'home_banner'): Promise<{
     success: boolean;
@@ -678,8 +699,9 @@ export const api = {
     customer_name: string;
     customer_email: string;
     customer_phone: string;
-    shipping_address: string;
-    shipping_city: string;
+    delivery_method: 'delivery' | 'pickup';
+    shipping_address?: string;
+    shipping_city?: string;
     shipping_postal_code?: string;
     items: { product_id: number; quantity: number }[];
     voucher_code?: string;
@@ -1104,6 +1126,28 @@ export const api = {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify({ order_status: status }),
+    });
+  },
+
+  async getAdminOrderWaybills(token: string, id: number): Promise<{
+    success: boolean;
+    data: {
+      order: {
+        id: number;
+        order_number: string;
+        customer_name: string;
+        customer_phone: string;
+        shipping_address: string;
+        shipping_city: string;
+        created_at: string;
+        payment_method: string;
+        order_status: string;
+      };
+      waybills: MerchantWaybill[];
+    };
+  }> {
+    return fetcher(`/admin/orders/${id}/waybills`, {
+      headers: { Authorization: `Bearer ${token}` },
     });
   },
 

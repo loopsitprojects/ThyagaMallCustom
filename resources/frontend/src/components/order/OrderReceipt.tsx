@@ -64,7 +64,9 @@ export default function OrderReceipt({ order, isPaid }: { order: Order; isPaid: 
         {/* Addresses */}
         <div className="grid grid-cols-2 gap-6 pb-6 text-[9.5pt]">
           <div className="rounded-lg border border-gray-200 p-4">
-            <p className="text-[8pt] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Deliver to</p>
+            <p className="text-[8pt] font-bold uppercase tracking-wider text-gray-500 mb-1.5">
+              {order.delivery_method === 'pickup' ? 'Store pickup at' : 'Deliver to'}
+            </p>
             <p className="font-bold">{order.customer_name}</p>
             <p className="text-gray-700 whitespace-pre-line">{order.shipping_address}</p>
             <p className="text-gray-700">
@@ -124,7 +126,7 @@ export default function OrderReceipt({ order, isPaid }: { order: Order; isPaid: 
                 </tr>
               )}
               <tr>
-                <td className="py-1 text-gray-600">Delivery</td>
+                <td className="py-1 text-gray-600">{order.delivery_method === 'pickup' ? 'Store pickup' : 'Delivery'}</td>
                 <td className="py-1 text-right">{Number(order.shipping_fee) === 0 ? 'Free' : money(order.shipping_fee)}</td>
               </tr>
               <tr className="border-t-2 border-gray-900">

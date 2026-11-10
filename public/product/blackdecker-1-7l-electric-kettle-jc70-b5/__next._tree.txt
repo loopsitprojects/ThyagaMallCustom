@@ -1,9 +1,9 @@
 :HL["/thyaga/_next/static/chunks/2gl09xy48627q.css","style"]
-:HL["/thyaga/_next/static/chunks/31j3sz10emdkf.css","style"]
+:HL["/thyaga/_next/static/chunks/2wsfxutnj8k91.css","style"]
 :HL["/thyaga/_next/static/media/47fe1b7cd6e6ed85-s.p.3bh2vc0w-r-ll.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 :HL["/thyaga/_next/static/media/829ba4228c966254-s.p.2mm3nq9i83l-m.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 :HL["/thyaga/_next/static/media/83afe278b6a6bb3c-s.p.2bn3s6zvc0dyp.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 :HL["/thyaga/_next/static/media/8e6fa89aa22d24ec-s.p.2o7m9ogm38dql.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 :HL["/thyaga/_next/static/media/a218039a3287bcfd-s.p.43zbiuwnnoiok.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 :HL["/thyaga/_next/static/media/e2334d715941921e-s.p.3o_v2fun1jzxk.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
-0:{"tree":{"name":"","param":null,"prefetchHints":4176,"slots":{"children":{"name":"product","param":null,"prefetchHints":4192,"slots":{"children":{"name":"slug","param":{"type":"d","key":"blackdecker-1-7l-electric-kettle-jc70-b5","siblings":[]},"prefetchHints":4192,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":4256,"slots":null}}}}}}},"staleTime":300,"buildId":"JwZFW40bXmWWki3b6wRDZ"}
+0:{"tree":{"name":"","param":null,"prefetchHints":4176,"slots":{"children":{"name":"product","param":null,"prefetchHints":4192,"slots":{"children":{"name":"slug","param":{"type":"d","key":"blackdecker-1-7l-electric-kettle-jc70-b5","siblings":[]},"prefetchHints":4192,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":4256,"slots":null}}}}}}},"staleTime":300,"buildId":"X_CGanM2dFuvEVFfJ_vPw"}

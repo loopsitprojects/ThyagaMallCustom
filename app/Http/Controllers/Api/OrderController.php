@@ -9,6 +9,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\Voucher;
+use App\Services\StorePickupSettings;
 use App\Services\ThyagaVoucherService;
 use App\Services\WebxpayService;
 use Illuminate\Http\JsonResponse;
@@ -26,9 +27,11 @@ class OrderController extends Controller
             'customer_name' => 'required|string|max:255',
             'customer_email' => 'required|email|max:255',
             'customer_phone' => 'required|string|max:50',
-            'shipping_address' => 'required|string',
-            'shipping_city' => 'required|string|max:100',
-            'shipping_postal_code' => 'nullable|string|max:20',
+            'delivery_method' => 'sometimes|string|in:delivery,pickup',
+            // Not needed for store pickup: the store's own address is saved instead.
+            'shipping_address' => 'exclude_if:delivery_method,pickup|required|string',
+            'shipping_city' => 'exclude_if:delivery_method,pickup|required|string|max:100',
+            'shipping_postal_code' => 'exclude_if:delivery_method,pickup|nullable|string|max:20',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1|max:100',
@@ -41,7 +44,23 @@ class OrderController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        return DB::transaction(function () use ($validated) {
+        $isPickup = ($validated['delivery_method'] ?? 'delivery') === 'pickup';
+
+        if ($isPickup) {
+            $pickup = app(StorePickupSettings::class)->get();
+
+            if (! $pickup['enabled']) {
+                throw ValidationException::withMessages([
+                    'delivery_method' => ['Store pickup is not available right now. Please choose home delivery.'],
+                ]);
+            }
+
+            // Saved on the order so staff, receipts and emails show where it is collected.
+            $validated['shipping_address'] = $pickup['name'].', '.$pickup['address'];
+            $validated['shipping_city'] = $pickup['city'];
+        }
+
+        return DB::transaction(function () use ($validated, $isPickup) {
             $subtotal = 0;
             $orderItemsData = [];
 
@@ -78,8 +97,8 @@ class OrderController extends Controller
                 $product->decrement('stock_quantity', $item['quantity']);
             }
 
-            // Calculate shipping fee: FREE if order over Rs. 2,999
-            $shippingFee = ($subtotal >= 2999) ? 0.00 : 350.00;
+            // Shipping fee: none for store pickup, otherwise FREE if order over Rs. 2,999
+            $shippingFee = ($isPickup || $subtotal >= 2999) ? 0.00 : 350.00;
 
             // Calculate voucher discount (Thyāga API or local DB)
             $discount = 0.00;
@@ -136,6 +155,7 @@ class OrderController extends Controller
                 'shipping_address' => $validated['shipping_address'],
                 'shipping_city' => $validated['shipping_city'],
                 'shipping_postal_code' => $validated['shipping_postal_code'] ?? null,
+                'delivery_method' => $isPickup ? 'pickup' : 'delivery',
                 'subtotal' => $subtotal,
                 'discount' => $discount,
                 'shipping_fee' => $shippingFee,
@@ -164,6 +184,7 @@ class OrderController extends Controller
                 'order_number' => $order->order_number,
                 'total' => $order->total,
                 'shipping_fee' => $order->shipping_fee,
+                'delivery_method' => $order->delivery_method,
                 'discount' => $order->discount,
                 'order_status' => $order->order_status,
                 'payment_method' => $order->payment_method,

@@ -12,9 +12,12 @@ import {
   X,
   Loader2,
   Eye,
+  FileText,
+  Printer,
 } from 'lucide-react';
 import { api } from '@/services/api';
 import { Order } from '@/types';
+import MerchantWaybillModal from '@/components/admin/MerchantWaybillModal';
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -25,6 +28,7 @@ export default function AdminOrdersPage() {
 
   // Selected Order for Modal View
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
+  const [waybillOrder, setWaybillOrder] = useState<{ id: number; order_number: string } | null>(null);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -166,7 +170,15 @@ export default function AdminOrdersPage() {
                       <div className="font-semibold text-gray-900">{ord.customer_name}</div>
                       <div className="text-[10px] text-gray-400">{ord.customer_phone}</div>
                     </td>
-                    <td className="p-3 text-gray-600">{ord.shipping_city}</td>
+                    <td className="p-3 text-gray-600">
+                      {ord.delivery_method === 'pickup' ? (
+                        <span className="inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-800">
+                          Store Pickup
+                        </span>
+                      ) : (
+                        ord.shipping_city
+                      )}
+                    </td>
                     <td className="p-3 font-black text-gray-900">
                       Rs. {Number(ord.total).toLocaleString()}
                     </td>
@@ -183,13 +195,23 @@ export default function AdminOrdersPage() {
                       </span>
                     </td>
                     <td className="p-3 text-right">
-                      <button
-                        onClick={() => setActiveOrder(ord)}
-                        className="bg-purple-50 hover:bg-[#36135d] hover:text-white text-[#36135d] px-3 py-1.5 rounded-lg font-bold text-xs transition cursor-pointer flex items-center gap-1 ml-auto"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Manage</span>
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => setWaybillOrder({ id: ord.id, order_number: ord.order_number })}
+                          className="bg-purple-50 hover:bg-[#36135d] hover:text-white text-[#36135d] px-2.5 py-1.5 rounded-lg font-bold text-xs transition cursor-pointer flex items-center gap-1 border border-purple-200"
+                          title="Generate Merchant Waybill"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>Waybill</span>
+                        </button>
+                        <button
+                          onClick={() => setActiveOrder(ord)}
+                          className="bg-gray-100 hover:bg-gray-800 hover:text-white text-gray-700 px-2.5 py-1.5 rounded-lg font-bold text-xs transition cursor-pointer flex items-center gap-1"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Manage</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -251,7 +273,10 @@ export default function AdminOrdersPage() {
                 <div><strong>Customer:</strong> {activeOrder.customer_name}</div>
                 <div><strong>Email:</strong> {activeOrder.customer_email}</div>
                 <div><strong>Phone:</strong> {activeOrder.customer_phone}</div>
-                <div><strong>Shipping Address:</strong> {activeOrder.shipping_address}, {activeOrder.shipping_city}</div>
+                <div>
+                  <strong>{activeOrder.delivery_method === 'pickup' ? 'Store Pickup at:' : 'Shipping Address:'}</strong>{' '}
+                  {activeOrder.shipping_address}, {activeOrder.shipping_city}
+                </div>
                 {activeOrder.notes && <div><strong>Notes:</strong> {activeOrder.notes}</div>}
               </div>
 
@@ -288,7 +313,7 @@ export default function AdminOrdersPage() {
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span>Delivery Fee:</span>
+                  <span>{activeOrder.delivery_method === 'pickup' ? 'Store Pickup:' : 'Delivery Fee:'}</span>
                   <span>Rs. {Number(activeOrder.shipping_fee).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm font-black text-gray-900 pt-1 border-t border-gray-100">
@@ -320,9 +345,32 @@ export default function AdminOrdersPage() {
                   {statusUpdating && <Loader2 className="w-4 h-4 animate-spin text-[#36135d]" />}
                 </div>
               </div>
+
+              {/* Waybill Button */}
+              <div className="pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWaybillOrder({ id: activeOrder.id, order_number: activeOrder.order_number });
+                  }}
+                  className="w-full bg-[#36135d] hover:bg-[#4d1c83] text-white py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition shadow-xs cursor-pointer"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Generate Merchant Waybill(s)</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Merchant Waybill Modal */}
+      {waybillOrder && (
+        <MerchantWaybillModal
+          orderId={waybillOrder.id}
+          orderNumber={waybillOrder.order_number}
+          onClose={() => setWaybillOrder(null)}
+        />
       )}
     </div>
   );

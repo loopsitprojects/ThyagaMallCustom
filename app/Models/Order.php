@@ -20,6 +20,7 @@ class Order extends Model
         'shipping_address',
         'shipping_city',
         'shipping_postal_code',
+        'delivery_method',
         'subtotal',
         'discount',
         'shipping_fee',

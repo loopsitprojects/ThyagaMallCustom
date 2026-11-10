@@ -122,7 +122,10 @@ function TrackOrderContent() {
             {/* Recipient info & items */}
             <div className="bg-gray-50 p-4 rounded-xl text-xs space-y-2 text-gray-600">
               <div><strong>Recipient:</strong> {order.customer_name} ({order.customer_phone})</div>
-              <div><strong>Delivery Address:</strong> {order.shipping_address}, {order.shipping_city}</div>
+              <div>
+                <strong>{order.delivery_method === 'pickup' ? 'Store Pickup:' : 'Delivery Address:'}</strong>{' '}
+                {order.shipping_address}, {order.shipping_city}
+              </div>
               <div><strong>Payment Method:</strong> {order.payment_method.toUpperCase()} ({order.payment_status})</div>
               <div className="pt-2 border-t border-gray-200 font-bold text-gray-900 text-sm">
                 Total: Rs. {Number(order.total).toLocaleString('en-US', { minimumFractionDigits: 2 })}

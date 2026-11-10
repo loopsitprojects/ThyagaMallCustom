@@ -74,7 +74,7 @@
                             @endif
                             <tr>
                                 <td style="padding:6px 0;">Shipping:</td>
-                                <td align="right" style="padding:6px 0;">{{ (float) $order->shipping_fee > 0 ? $money($order->shipping_fee) : 'Free shipping' }}</td>
+                                <td align="right" style="padding:6px 0;">{{ $order->delivery_method === 'pickup' ? 'Store pickup (free)' : ((float) $order->shipping_fee > 0 ? $money($order->shipping_fee) : 'Free shipping') }}</td>
                             </tr>
                             <tr>
                                 <td style="padding:6px 0;font-weight:700;">Total:</td>
@@ -102,9 +102,16 @@
                         @endif
 
                         <div style="border-top:1px solid #e7e5ea;padding:16px 0;">
-                            <h3 style="margin:0 0 8px;font-size:14px;font-weight:700;">Billing &amp; shipping address</h3>
+                            @if ($order->delivery_method === 'pickup')
+                                <h3 style="margin:0 0 8px;font-size:14px;font-weight:700;">Store pickup</h3>
+                                <p style="margin:0 0 8px;font-size:13px;line-height:1.6;">Collect this order from the store below. We'll contact you when it's ready.</p>
+                            @else
+                                <h3 style="margin:0 0 8px;font-size:14px;font-weight:700;">Billing &amp; shipping address</h3>
+                            @endif
                             <p style="margin:0;font-size:13px;line-height:1.6;">
-                                {{ $order->customer_name }}<br>
+                                @if ($order->delivery_method !== 'pickup')
+                                    {{ $order->customer_name }}<br>
+                                @endif
                                 {!! nl2br(e($order->shipping_address)) !!}<br>
                                 {{ $order->shipping_city }}
                                 @if ($order->shipping_postal_code)

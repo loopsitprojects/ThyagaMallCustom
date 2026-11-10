@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\Admin\AdminHomeSectionController;
 use App\Http\Controllers\Api\Admin\AdminMerchantController;
 use App\Http\Controllers\Api\Admin\AdminNewsletterController;
 use App\Http\Controllers\Api\Admin\AdminOnboardingAdController;
+use App\Http\Controllers\Api\Admin\AdminStorePickupController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminProductController;
 use App\Http\Controllers\Api\Admin\AdminRestockRequestController;
@@ -27,6 +28,7 @@ use App\Http\Controllers\Api\HeroSlideController;
 use App\Http\Controllers\Api\HomeSectionController;
 use App\Http\Controllers\Api\NewsletterController;
 use App\Http\Controllers\Api\OnboardingAdController;
+use App\Http\Controllers\Api\StorePickupController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\Payment\WebxpayController;
 use App\Http\Controllers\Api\ProductController;
@@ -108,6 +110,7 @@ Route::get('/hero-slides', [HeroSlideController::class, 'index']);
 Route::get('/home-sections/{section}', [HomeSectionController::class, 'show'])->whereIn('section', HomeSectionProduct::SECTIONS);
 Route::get('/hero-banner', [HeroSlideController::class, 'banner']);
 Route::get('/onboarding-ad', [OnboardingAdController::class, 'show']);
+Route::get('/store-pickup', [StorePickupController::class, 'show']);
 
 Route::post('/vouchers/apply', [VoucherController::class, 'apply'])->middleware('throttle:20,1');
 
@@ -225,10 +228,16 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('/onboarding-ad/image', [AdminOnboardingAdController::class, 'uploadImage']);
     Route::delete('/onboarding-ad/image', [AdminOnboardingAdController::class, 'removeImage']);
 
+    // Checkout store pickup location
+    Route::get('/store-pickup', [AdminStorePickupController::class, 'show']);
+    Route::put('/store-pickup', [AdminStorePickupController::class, 'update']);
+
     // Orders Management
     Route::get('/orders', [AdminOrderController::class, 'index']);
     Route::get('/orders/{id}', [AdminOrderController::class, 'show']);
     Route::put('/orders/{id}/status', [AdminOrderController::class, 'updateStatus']);
+    Route::get('/orders/{id}/waybills', [AdminOrderController::class, 'waybills']);
+    Route::get('/orders/{id}/waybill-print/{merchantId?}', [AdminOrderController::class, 'printWaybill']);
 
     // Customers Management (users table)
     Route::get('/users', [AdminUserController::class, 'index']);
