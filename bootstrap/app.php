@@ -32,6 +32,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'ThyagaMall/api/payment/webxpay/*',
             'ThyagaMall/checkout',
             'ThyagaMall/checkout/*',
+            'thyaga/api/payment/webxpay/*',
+            'thyaga/checkout',
+            'thyaga/checkout/*',
+            'Thyaga/api/payment/webxpay/*',
+            'Thyaga/checkout',
+            'Thyaga/checkout/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -55,10 +55,15 @@ try {
         $app->register(ViewServiceProvider::class);
     }
 
-    // Normalize subfolder prefix if hosted under /ThyagaMall/api
+    // Normalize subfolder prefix if hosted under /thyaga, /Thyaga, /ThyagaMall
     if (isset($_SERVER['REQUEST_URI'])) {
-        if (preg_match('#^/ThyagaMall(/api.*)$#i', $_SERVER['REQUEST_URI'], $matches)) {
-            $_SERVER['REQUEST_URI'] = $matches[1];
+        if (preg_match('#^/(?:thyaga|ThyagaMall)(/.*)$#i', $_SERVER['REQUEST_URI'], $matches)) {
+            $_SERVER['REQUEST_URI'] = $matches[1] !== '' ? $matches[1] : '/';
+        }
+    }
+    if (isset($_SERVER['SCRIPT_NAME'])) {
+        if (preg_match('#^/(?:thyaga|ThyagaMall)(/.*)$#i', $_SERVER['SCRIPT_NAME'], $matches)) {
+            $_SERVER['SCRIPT_NAME'] = $matches[1];
         }
     }
 
