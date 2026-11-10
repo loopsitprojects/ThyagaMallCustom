@@ -54,3 +54,4 @@ class BrandFactory extends Factory
         ]);
     }
 }
+
