@@ -1,3 +1,6 @@
+# Define DirectoryIndex so LiteSpeed/Apache will look for index.php first
+DirectoryIndex index.php index.html public/index.html public/index.php
+
 # Automatically route all incoming requests into Laravel's public/ directory.
 # Nothing outside public/ (app, config, vendor, .env, ...) is reachable from the web.
 <IfModule mod_rewrite.c>
