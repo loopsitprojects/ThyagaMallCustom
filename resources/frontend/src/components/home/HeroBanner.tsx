@@ -13,9 +13,6 @@ import { useCategories, categoryHref } from '@/hooks/useCategories';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-// Rows that fit the sidebar's fixed height; the last row links to the full catalogue.
-const SIDEBAR_ROWS = 11;
-
 // The banner takes the full width beside the category list.
 const HERO_SIZE = 'lg:col-span-9 min-h-[230px] h-[260px] sm:h-[340px] lg:h-[425px]';
 
@@ -26,10 +23,6 @@ export default function HeroBanner() {
   const [mode, setMode] = useState<HeroMode | null>(null);
   const reduce = useReducedMotion();
   const { categories } = useCategories();
-  const sidebarItems = [
-    ...categories.slice(0, SIDEBAR_ROWS).map((cat) => ({ key: `c${cat.id}`, name: cat.name, href: categoryHref(cat), icon: <CategoryIcon icon={cat.icon} className="w-3.5 h-3.5" /> })),
-    { key: 'all', name: 'All Categories', href: '/shop', icon: <LayoutGrid className="w-3.5 h-3.5" /> },
-  ];
 
   // Mode, slides and images are managed in Admin → Hero Slides; fall back to the built-in 3D slides if the API is unavailable.
   useEffect(() => {
@@ -52,39 +45,71 @@ export default function HeroBanner() {
   return (
     <div className="w-full">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
-        {/* Left Column: Vertical Category List (12 items) */}
+        {/* Left Column: Vertical Category List */}
         <motion.div
           initial={reduce ? false : { opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.7, ease: EASE }}
-          className="hidden lg:block lg:col-span-3 bg-white rounded-xl border border-gray-200 shadow-2xs p-2.5 flex flex-col justify-between h-[425px]"
+          className="hidden lg:flex lg:col-span-3 bg-white rounded-xl border border-gray-200 shadow-2xs p-3 flex-col justify-between h-[425px]"
         >
-          <div className="space-y-0.5">
-            {sidebarItems.map((item, idx) => {
-              return (
-                <motion.div
-                  key={item.key}
-                  initial={reduce ? false : { opacity: 0, x: -12 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.15 + idx * 0.035, duration: 0.45, ease: EASE }}
+          <div className="flex flex-col justify-between flex-1 py-0.5">
+            {categories.slice(0, 7).map((cat, idx) => (
+              <motion.div
+                key={`c${cat.id}`}
+                initial={reduce ? false : { opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.15 + idx * 0.035, duration: 0.45, ease: EASE }}
+              >
+                <Link
+                  href={categoryHref(cat)}
+                  className="group relative flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-colors hover:bg-purple-50/70"
                 >
-                  <Link
-                    href={item.href}
-                    className="relative flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium text-gray-700 hover:text-[#36135d] transition group overflow-hidden"
-                  >
-                    {/* Sliding highlight */}
-                    <span className="absolute inset-0 bg-linear-to-r from-purple-100 to-purple-50/0 -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out rounded-lg" />
-                    <div className="relative flex items-center gap-2.5">
-                      <span className="text-gray-400 group-hover:text-[#36135d] group-hover:scale-125 group-hover:-rotate-12 transition-transform duration-300 flex">
-                        {item.icon}
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="w-8 h-8 rounded-lg bg-gray-50 group-hover:bg-purple-100/80 text-gray-500 group-hover:text-[#36135d] flex items-center justify-center shrink-0 transition-transform group-hover:scale-110">
+                      <CategoryIcon icon={cat.icon} className="w-4 h-4" />
+                    </span>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-bold text-gray-800 group-hover:text-[#36135d] transition-colors truncate">
+                        {cat.name}
                       </span>
-                      <span className="group-hover:translate-x-0.5 transition-transform duration-300">{item.name}</span>
+                      {cat.subtitle ? (
+                        <span className="text-[10px] text-gray-400 group-hover:text-purple-600/80 transition-colors truncate">
+                          {cat.subtitle}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-gray-400 group-hover:text-purple-600/80 transition-colors truncate">
+                          {cat.total_products_count || cat.products_count ? `${cat.total_products_count || cat.products_count} Products` : 'Explore'}
+                        </span>
+                      )}
                     </div>
-                    <ChevronRight className="relative w-3 h-3 text-gray-300 group-hover:text-[#36135d] group-hover:translate-x-0.5 transition" />
-                  </Link>
-                </motion.div>
-              );
-            })}
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-[#36135d] group-hover:translate-x-0.5 transition-transform shrink-0 ml-1" />
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Bottom Action: View All Categories */}
+          <div className="pt-2 border-t border-gray-100 mt-1">
+            <Link
+              href="/shop"
+              className="group flex items-center justify-between px-3 py-2 rounded-lg bg-linear-to-r from-purple-50 via-pink-50 to-amber-50/40 border border-purple-100/70 hover:border-purple-200 hover:shadow-xs transition"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="w-7 h-7 rounded-md bg-[#240d42] text-white flex items-center justify-center shrink-0 group-hover:rotate-6 transition-transform">
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                </span>
+                <div className="flex flex-col">
+                  <span className="text-xs font-black text-gray-900 group-hover:text-[#36135d] transition-colors leading-tight">
+                    All Categories
+                  </span>
+                  <span className="text-[10px] text-gray-500 font-medium leading-tight">
+                    View Complete Catalog
+                  </span>
+                </div>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-[#36135d] group-hover:translate-x-1 transition-transform" />
+            </Link>
           </div>
         </motion.div>
 
