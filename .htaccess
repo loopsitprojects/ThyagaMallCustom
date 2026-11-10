@@ -1,9 +1,13 @@
-# Repository root is served at /ThyagaMall/ — send every request into Laravel's public/ directory.
+# Automatically route all incoming requests into Laravel's public/ directory.
 # Nothing outside public/ (app, config, vendor, .env, ...) is reachable from the web.
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /ThyagaMall/
 
+    # Block access to .env and sensitive environment files
+    RewriteRule ^\.env - [F,L,NC]
+
+    # Rewrite all traffic into the public/ folder
+    RewriteCond %{REQUEST_URI} !/public/ [NC]
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
 
@@ -13,7 +17,7 @@
     Deny from all
 </FilesMatch>
 
-<FilesMatch "(composer\.json|composer\.lock|package\.json|artisan|phpunit\.xml)">
+<FilesMatch "(composer\.json|composer\.lock|package\.json|artisan|phpunit\.xml|\.env)">
     Order allow,deny
     Deny from all
 </FilesMatch>
