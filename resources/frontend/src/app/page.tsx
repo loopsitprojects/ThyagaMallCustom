@@ -19,8 +19,11 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6">
-      {/* 1. Hero Promotional Area with Category Sidebar & App/Promo Widgets */}
+      {/* 1. Hero: category sidebar + full-width banner (3D slides or image carousel) */}
       <HeroBanner />
+
+      {/* Delivery, authenticity, returns, payment & support promises, right under the banner */}
+      <AppDownloadAndTrust />
 
       {/* 2. Quick category shortcuts (homepage categories from Admin → Categories) */}
       <Reveal>
@@ -55,11 +58,6 @@ export default function HomePage() {
       {/* 8. Best Sellers with Filter Tabs (All, Electronics, Home, Fashion, Beauty) */}
       <Reveal>
         <BestSellersSection />
-      </Reveal>
-
-      {/* 9. Value Badges & Mobile App Download Showcase */}
-      <Reveal>
-        <AppDownloadAndTrust />
       </Reveal>
 
       {/* 10. Newsletter Subscription Bar with Social Media Links */}
