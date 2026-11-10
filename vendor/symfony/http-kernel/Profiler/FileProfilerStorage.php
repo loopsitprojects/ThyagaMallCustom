@@ -42,9 +42,6 @@ class FileProfilerStorage implements ProfilerStorageInterface
         }
     }
 
-    /**
-     * @param-immediately-invoked-callable $filter
-     */
     public function find(?string $ip, ?string $url, ?int $limit, ?string $method, ?int $start = null, ?int $end = null, ?string $statusCode = null, ?\Closure $filter = null): array
     {
         $file = $this->getIndexFilename();
@@ -53,11 +50,19 @@ class FileProfilerStorage implements ProfilerStorageInterface
             return [];
         }
 
+        // the lines before this offset belong to expired profiles, whose files were already removed
+        $offset = is_file($file.'.offset') ? (int) file_get_contents($file.'.offset') : 0;
+
         $file = fopen($file, 'r');
         fseek($file, 0, \SEEK_END);
 
+        if (ftell($file) < $offset) {
+            // the index was recreated after the offset was saved
+            $offset = 0;
+        }
+
         $result = [];
-        while (\count($result) < $limit && $line = $this->readLineFromFile($file)) {
+        while (\count($result) < $limit && ftell($file) > $offset && $line = $this->readLineFromFile($file)) {
             $values = str_getcsv($line, ',', '"', '\\');
 
             if (7 > \count($values)) {
@@ -65,7 +70,7 @@ class FileProfilerStorage implements ProfilerStorageInterface
                 continue;
             }
 
-            [$csvToken, $csvIp, $csvMethod, $csvUrl, $csvTime, $csvParent, $csvStatusCode, $csvVirtualType, $csvHasErrors] = $values + [7 => null, 8 => null];
+            [$csvToken, $csvIp, $csvMethod, $csvUrl, $csvTime, $csvParent, $csvStatusCode, $csvVirtualType] = $values + [7 => null];
             $csvTime = (int) $csvTime;
 
             $urlFilter = false;
@@ -73,7 +78,7 @@ class FileProfilerStorage implements ProfilerStorageInterface
                 $urlFilter = str_starts_with($url, '!') ? str_contains($csvUrl, substr($url, 1)) : !str_contains($csvUrl, $url);
             }
 
-            if ($ip && !str_contains($csvIp, $ip) || $urlFilter || $method && !str_contains($csvMethod, $method) || $statusCode && !str_contains($csvStatusCode, $statusCode)) {
+            if ($ip && !str_contains($csvIp, $ip) || $urlFilter || $method && !str_contains($csvMethod, $method) || null !== $statusCode && '' !== $statusCode && !str_contains($csvStatusCode, $statusCode)) {
                 continue;
             }
 
@@ -94,7 +99,6 @@ class FileProfilerStorage implements ProfilerStorageInterface
                 'parent' => $csvParent,
                 'status_code' => $csvStatusCode,
                 'virtual_type' => $csvVirtualType ?: 'request',
-                'has_errors' => (bool) $csvHasErrors,
             ];
 
             if ($filter && !$filter($profile)) {
@@ -163,7 +167,6 @@ class FileProfilerStorage implements ProfilerStorageInterface
             'time' => $profile->getTime(),
             'status_code' => $profile->getStatusCode(),
             'virtual_type' => $profile->getVirtualType() ?? 'request',
-            'has_errors' => $profile->hasErrors(),
         ];
 
         $data = serialize($data);
@@ -191,7 +194,6 @@ class FileProfilerStorage implements ProfilerStorageInterface
                 $profile->getParentToken(),
                 $profile->getStatusCode(),
                 $profile->getVirtualType() ?? 'request',
-                $profile->hasErrors() ? '1' : '0',
             ], ',', '"', '\\');
             fclose($file);
 
@@ -283,7 +285,6 @@ class FileProfilerStorage implements ProfilerStorageInterface
         $profile->setTime($data['time']);
         $profile->setStatusCode($data['status_code']);
         $profile->setVirtualType($data['virtual_type'] ?: 'request');
-        $profile->setHasErrors($data['has_errors'] ?? false);
         $profile->setCollectors($data['data']);
 
         if (!$parent && $data['parent']) {
@@ -333,6 +334,11 @@ class FileProfilerStorage implements ProfilerStorageInterface
         $handle = fopen($file, 'r');
 
         if ($offset = is_file($file.'.offset') ? (int) file_get_contents($file.'.offset') : 0) {
+            if ($offset > fstat($handle)['size']) {
+                // the index was recreated after the offset was saved
+                $offset = 0;
+            }
+
             fseek($handle, $offset);
         }
 
@@ -347,7 +353,7 @@ class FileProfilerStorage implements ProfilerStorageInterface
 
             [$csvToken, , , , $csvTime] = $values;
 
-            if ($csvTime >= $minimalProfileTimestamp) {
+            if ((int) $csvTime >= $minimalProfileTimestamp) {
                 break;
             }
 

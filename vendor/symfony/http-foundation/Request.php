@@ -64,52 +64,29 @@ class Request
     public const METHOD_CONNECT = 'CONNECT';
     public const METHOD_QUERY = 'QUERY';
 
-    private const FORWARDED_PARAMS = [
-        self::HEADER_X_FORWARDED_FOR => 'for',
-        self::HEADER_X_FORWARDED_HOST => 'host',
-        self::HEADER_X_FORWARDED_PROTO => 'proto',
-        self::HEADER_X_FORWARDED_PORT => 'host',
-    ];
+    /**
+     * @var string[]
+     */
+    protected static array $trustedProxies = [];
 
     /**
-     * Names for headers that can be trusted when
-     * using trusted proxies.
-     *
-     * The FORWARDED header is the standard as of rfc7239.
-     *
-     * The other headers are non-standard, but widely used
-     * by popular reverse proxies (like Apache mod_proxy or Amazon EC2).
+     * @var string[]
      */
-    private const TRUSTED_HEADERS = [
-        self::HEADER_FORWARDED => 'FORWARDED',
-        self::HEADER_X_FORWARDED_FOR => 'X_FORWARDED_FOR',
-        self::HEADER_X_FORWARDED_HOST => 'X_FORWARDED_HOST',
-        self::HEADER_X_FORWARDED_PROTO => 'X_FORWARDED_PROTO',
-        self::HEADER_X_FORWARDED_PORT => 'X_FORWARDED_PORT',
-        self::HEADER_X_FORWARDED_PREFIX => 'X_FORWARDED_PREFIX',
-    ];
+    protected static array $trustedHostPatterns = [];
 
     /**
-     * This mapping is used when no exact MIME match is found in $formats.
-     *
-     * It enables mappings like application/soap+xml -> xml.
-     *
-     * @see https://datatracker.ietf.org/doc/html/rfc6839
-     * @see https://datatracker.ietf.org/doc/html/rfc7303
-     * @see https://www.iana.org/assignments/media-types/media-types.xhtml
+     * @var string[]
      */
-    private const STRUCTURED_SUFFIX_FORMATS = [
-        'json' => 'json',
-        'xml' => 'xml',
-        'xhtml' => 'html',
-        'cbor' => 'cbor',
-        'zip' => 'zip',
-        'ber' => 'asn1',
-        'der' => 'asn1',
-        'tlv' => 'tlv',
-        'wbxml' => 'xml',
-        'yaml' => 'yaml',
-    ];
+    protected static array $trustedHosts = [];
+
+    protected static bool $httpMethodParameterOverride = false;
+
+    /**
+     * The HTTP methods that can be overridden.
+     *
+     * @var uppercase-string[]|null
+     */
+    protected static ?array $allowedHttpMethodOverride = null;
 
     /**
      * Custom parameters.
@@ -192,30 +169,6 @@ class Request
      */
     protected static ?array $formats = null;
 
-    /**
-     * @var string[]
-     */
-    protected static array $trustedProxies = [];
-
-    /**
-     * @var string[]
-     */
-    protected static array $trustedHostPatterns = [];
-
-    /**
-     * @var string[]
-     */
-    protected static array $trustedHosts = [];
-
-    protected static bool $httpMethodParameterOverride = false;
-
-    /**
-     * The HTTP methods that can be overridden.
-     *
-     * @var uppercase-string[]|null
-     */
-    protected static ?array $allowedHttpMethodOverride = null;
-
     protected static ?\Closure $requestFactory = null;
 
     private ?string $preferredFormat = null;
@@ -237,6 +190,53 @@ class Request
      * @var string[]
      */
     private static array $trustedHostsRegexps = [];
+
+    private const FORWARDED_PARAMS = [
+        self::HEADER_X_FORWARDED_FOR => 'for',
+        self::HEADER_X_FORWARDED_HOST => 'host',
+        self::HEADER_X_FORWARDED_PROTO => 'proto',
+        self::HEADER_X_FORWARDED_PORT => 'host',
+    ];
+
+    /**
+     * Names for headers that can be trusted when
+     * using trusted proxies.
+     *
+     * The FORWARDED header is the standard as of rfc7239.
+     *
+     * The other headers are non-standard, but widely used
+     * by popular reverse proxies (like Apache mod_proxy or Amazon EC2).
+     */
+    private const TRUSTED_HEADERS = [
+        self::HEADER_FORWARDED => 'FORWARDED',
+        self::HEADER_X_FORWARDED_FOR => 'X_FORWARDED_FOR',
+        self::HEADER_X_FORWARDED_HOST => 'X_FORWARDED_HOST',
+        self::HEADER_X_FORWARDED_PROTO => 'X_FORWARDED_PROTO',
+        self::HEADER_X_FORWARDED_PORT => 'X_FORWARDED_PORT',
+        self::HEADER_X_FORWARDED_PREFIX => 'X_FORWARDED_PREFIX',
+    ];
+
+    /**
+     * This mapping is used when no exact MIME match is found in $formats.
+     *
+     * It enables mappings like application/soap+xml -> xml.
+     *
+     * @see https://datatracker.ietf.org/doc/html/rfc6839
+     * @see https://datatracker.ietf.org/doc/html/rfc7303
+     * @see https://www.iana.org/assignments/media-types/media-types.xhtml
+     */
+    private const STRUCTURED_SUFFIX_FORMATS = [
+        'json' => 'json',
+        'xml' => 'xml',
+        'xhtml' => 'html',
+        'cbor' => 'cbor',
+        'zip' => 'zip',
+        'ber' => 'asn1',
+        'der' => 'asn1',
+        'tlv' => 'tlv',
+        'wbxml' => 'xml',
+        'yaml' => 'yaml',
+    ];
 
     private bool $isIisRewrite = false;
 
@@ -269,13 +269,13 @@ class Request
      */
     public function initialize(array $query = [], array $request = [], array $attributes = [], array $cookies = [], array $files = [], array $server = [], $content = null): void
     {
-        self::setProperty($this, 'request', new InputBag($request));
-        self::setProperty($this, 'query', new InputBag($query));
-        self::setProperty($this, 'attributes', new ParameterBag($attributes));
-        self::setProperty($this, 'cookies', new InputBag($cookies));
-        self::setProperty($this, 'files', new FileBag($files));
-        self::setProperty($this, 'server', new ServerBag($server));
-        self::setProperty($this, 'headers', new HeaderBag($this->server->getHeaders()));
+        $this->request = new InputBag($request);
+        $this->query = new InputBag($query);
+        $this->attributes = new ParameterBag($attributes);
+        $this->cookies = new InputBag($cookies);
+        $this->files = new FileBag($files);
+        $this->server = new ServerBag($server);
+        $this->headers = new HeaderBag($this->server->getHeaders());
 
         $this->content = $content;
         $this->languages = null;
@@ -299,14 +299,21 @@ class Request
             return self::createRequestFromFactory($_GET, $_POST, [], $_COOKIE, $_FILES, $_SERVER);
         }
 
-        if (\function_exists('request_parse_body')) {
-            try {
-                [$post, $files] = request_parse_body();
-            } catch (\RequestParseBodyException) {
+        if (\PHP_VERSION_ID < 80400) {
+            if (!isset($_SERVER['CONTENT_TYPE']) || str_starts_with($_SERVER['CONTENT_TYPE'], 'application/x-www-form-urlencoded')) {
+                $content = file_get_contents('php://input');
+                @parse_str($content, $post);
+            } else {
+                $content = null;
                 $post = $_POST;
-                $files = $_FILES;
             }
-        } else {
+
+            return self::createRequestFromFactory($_GET, $post, [], $_COOKIE, $_FILES, $_SERVER, $content);
+        }
+
+        try {
+            [$post, $files] = @request_parse_body();
+        } catch (\RequestParseBodyException) {
             $post = $_POST;
             $files = $_FILES;
         }
@@ -437,7 +444,7 @@ class Request
 
         $queryString = '';
         if (isset($components['query'])) {
-            parse_str(html_entity_decode($components['query']), $qs);
+            @parse_str(html_entity_decode($components['query']), $qs);
 
             if ($query) {
                 $query = array_replace($qs, $query);
@@ -482,23 +489,23 @@ class Request
     {
         $dup = clone $this;
         if (null !== $query) {
-            self::setProperty($dup, 'query', new InputBag($query));
+            $dup->query = new InputBag($query);
         }
         if (null !== $request) {
-            self::setProperty($dup, 'request', new InputBag($request));
+            $dup->request = new InputBag($request);
         }
         if (null !== $attributes) {
-            self::setProperty($dup, 'attributes', new ParameterBag($attributes));
+            $dup->attributes = new ParameterBag($attributes);
         }
         if (null !== $cookies) {
-            self::setProperty($dup, 'cookies', new InputBag($cookies));
+            $dup->cookies = new InputBag($cookies);
         }
         if (null !== $files) {
-            self::setProperty($dup, 'files', new FileBag($files));
+            $dup->files = new FileBag($files);
         }
         if (null !== $server) {
-            self::setProperty($dup, 'server', new ServerBag($server));
-            self::setProperty($dup, 'headers', new HeaderBag($dup->server->getHeaders()));
+            $dup->server = new ServerBag($server);
+            $dup->headers = new HeaderBag($dup->server->getHeaders());
         }
         $dup->languages = null;
         $dup->charsets = null;
@@ -530,13 +537,13 @@ class Request
      */
     public function __clone()
     {
-        self::setProperty($this, 'query', clone $this->query);
-        self::setProperty($this, 'request', clone $this->request);
-        self::setProperty($this, 'attributes', clone $this->attributes);
-        self::setProperty($this, 'cookies', clone $this->cookies);
-        self::setProperty($this, 'files', clone $this->files);
-        self::setProperty($this, 'server', clone $this->server);
-        self::setProperty($this, 'headers', clone $this->headers);
+        $this->query = clone $this->query;
+        $this->request = clone $this->request;
+        $this->attributes = clone $this->attributes;
+        $this->cookies = clone $this->cookies;
+        $this->files = clone $this->files;
+        $this->server = clone $this->server;
+        $this->headers = clone $this->headers;
     }
 
     public function __toString(): string
@@ -604,7 +611,7 @@ class Request
      *
      * You should only list the reverse proxies that you manage directly.
      *
-     * @param array                          $proxies          A list of trusted proxies, the string 'REMOTE_ADDR' will be replaced with $_SERVER['REMOTE_ADDR'] and 'PRIVATE_SUBNETS' by IpUtils::PRIVATE_SUBNETS
+     * @param array                          $proxies          A list of trusted proxies, the string 'REMOTE_ADDR' will be replaced with $_SERVER['REMOTE_ADDR'], and 'private_ranges' or 'PRIVATE_SUBNETS' by IpUtils::PRIVATE_RANGES
      * @param int-mask-of<Request::HEADER_*> $trustedHeaderSet A bit field to set which headers to trust from your proxies
      */
     public static function setTrustedProxies(array $proxies, int $trustedHeaderSet): void
@@ -620,7 +627,7 @@ class Request
 
         if (false !== ($i = array_search('PRIVATE_SUBNETS', $proxies, true)) || false !== ($i = array_search('private_ranges', $proxies, true))) {
             unset($proxies[$i]);
-            $proxies = array_merge($proxies, IpUtils::PRIVATE_SUBNETS);
+            $proxies = array_merge($proxies, IpUtils::PRIVATE_RANGES);
         }
 
         self::$trustedProxies = $proxies;
@@ -750,6 +757,36 @@ class Request
     public static function getAllowedHttpMethodOverride(): ?array
     {
         return self::$allowedHttpMethodOverride;
+    }
+
+    /**
+     * Gets a "parameter" value from any bag.
+     *
+     * This method is mainly useful for libraries that want to provide some flexibility. If you don't need the
+     * flexibility in controllers, it is better to explicitly get request parameters from the appropriate
+     * public property instead (attributes, query, request).
+     *
+     * Order of precedence: PATH (routing placeholders or custom attributes), GET, POST
+     *
+     * @deprecated since Symfony 7.4, use properties `->attributes`, `query` or `request` directly instead
+     */
+    public function get(string $key, mixed $default = null): mixed
+    {
+        trigger_deprecation('symfony/http-foundation', '7.4', 'Request::get() is deprecated, use properties ->attributes, query or request directly instead.');
+
+        if ($this !== $result = $this->attributes->get($key, $this)) {
+            return $result;
+        }
+
+        if ($this->query->has($key)) {
+            return $this->query->all()[$key];
+        }
+
+        if ($this->request->has($key)) {
+            return $this->request->all()[$key];
+        }
+
+        return $default;
     }
 
     /**
@@ -1248,7 +1285,7 @@ class Request
         $method = strtoupper($method);
 
         if (\in_array($method, ['GET', 'HEAD', 'CONNECT', 'TRACE'], true)) {
-            return $this->method;
+            trigger_deprecation('symfony/http-foundation', '7.4', 'HTTP method override is deprecated for methods GET, HEAD, CONNECT and TRACE; it will be ignored in Symfony 8.0.', $method);
         }
 
         if (self::$allowedHttpMethodOverride && !\in_array($method, self::$allowedHttpMethodOverride, true)) {
@@ -1313,8 +1350,9 @@ class Request
      * @param string|null $mimeType        The mime type to check
      * @param bool        $subtypeFallback Whether to fall back to the subtype if no exact match is found
      */
-    public function getFormat(?string $mimeType, bool $subtypeFallback = false): ?string
+    public function getFormat(?string $mimeType/* , bool $subtypeFallback = false */): ?string
     {
+        $subtypeFallback = 2 <= \func_num_args() ? func_get_arg(1) : false;
         $canonicalMimeType = null;
         if ($mimeType && false !== $pos = strpos($mimeType, ';')) {
             $canonicalMimeType = trim(substr($mimeType, 0, $pos));
@@ -1367,10 +1405,16 @@ class Request
     /**
      * Associates a format with mime types.
      *
+     * @param string          $format    The format to set
      * @param string|string[] $mimeTypes The associated mime types (the preferred one must be the first as it will be used as the content type)
      */
-    public function setFormat(string $format, string|array $mimeTypes): void
+    public function setFormat(?string $format, string|array $mimeTypes): void
     {
+        if (null === $format) {
+            trigger_deprecation('symfony/http-foundation', '7.4', 'Passing "null" as the first argument of "%s()" is deprecated. The argument will be non-nullable in Symfony 8.0.', __METHOD__);
+            $format = '';
+        }
+
         if (null === static::$formats) {
             static::initializeFormats();
         }
@@ -1670,7 +1714,7 @@ class Request
         $combinations = array_merge(...array_map($this->getLanguageCombinations(...), $preferredLanguages));
         foreach ($combinations as $combination) {
             foreach ($locales as $locale) {
-                if (str_starts_with($locale, $combination)) {
+                if ($locale === $combination || str_starts_with($locale, $combination.'_')) {
                     return $locale;
                 }
             }
@@ -1929,8 +1973,13 @@ class Request
             $requestUri = '/'.$requestUri;
         }
 
-        if ($baseUrl && null !== $prefix = $this->getUrlencodedPrefix($requestUri, $baseUrl)) {
-            // full $baseUrl matches
+        if (str_starts_with($requestUri, '//') || str_starts_with($requestUri, '/\\')) {
+            // the URI starts with a host that the client chose: URLs built on it would point there
+            return '';
+        }
+
+        if ($baseUrl && (null !== $prefix = $this->getUrlencodedPrefix($requestUri, $baseUrl)) && \in_array($requestUri[\strlen($prefix)] ?? '', ['', '/', '?'], true)) {
+            // full $baseUrl matches, and is not only the start of a longer path segment
             return $prefix;
         }
 
@@ -1944,17 +1993,19 @@ class Request
             $truncatedRequestUri = substr($requestUri, 0, $pos);
         }
 
-        $basename = basename($baseUrl ?? '');
-        if (!$basename || !strpos(rawurldecode($truncatedRequestUri), $basename)) {
-            // no match whatsoever; set it blank
+        // With mod_rewrite or ISAPI_Rewrite, the script filename can come after
+        // a prefix in the path: the base URL then ends with the script filename
+        $decodedRequestUri = rawurldecode($truncatedRequestUri);
+        if (!$baseUrl || !$pos = ($this->isIisRewrite() ? stripos($decodedRequestUri, $baseUrl) : strpos($decodedRequestUri, $baseUrl))) {
+            // the script filename isn't in the path, or only at its start, which is handled above
             return '';
         }
 
-        // If using mod_rewrite or ISAPI_Rewrite strip the script filename
-        // out of baseUrl. $pos !== 0 makes sure it is not matching a value
-        // from PATH_INFO or QUERY_STRING
-        if (\strlen($requestUri) >= \strlen($baseUrl) && (false !== $pos = strpos($requestUri, $baseUrl)) && 0 !== $pos) {
-            $baseUrl = substr($requestUri, 0, $pos + \strlen($baseUrl));
+        $baseUrl = $this->getUrlencodedPrefix($truncatedRequestUri, substr($decodedRequestUri, 0, $pos + \strlen($baseUrl))) ?? '';
+
+        if (!\in_array($requestUri[\strlen($baseUrl)] ?? '', ['', '/', '?'], true)) {
+            // the script filename is only the start of a longer path segment
+            return '';
         }
 
         return rtrim($baseUrl, '/'.\DIRECTORY_SEPARATOR);
@@ -2070,13 +2121,12 @@ class Request
             return null;
         }
 
+        // Each byte of the prefix takes 1 or 3 characters in the string.
+        // A {n} quantifier would make PCRE fail to compile for a long prefix.
         $len = \strlen($prefix);
+        preg_match_all('#%[[:xdigit:]]{2}|.#s', substr($string, 0, 3 * $len), $match);
 
-        if (preg_match(\sprintf('#^(%%[[:xdigit:]]{2}|.){%d}#', $len), $string, $match)) {
-            return $match[0];
-        }
-
-        return null;
+        return implode('', \array_slice($match[0], 0, $len));
     }
 
     private static function createRequestFromFactory(array $query = [], array $request = [], array $attributes = [], array $cookies = [], array $files = [], array $server = [], $content = null): static
@@ -2176,17 +2226,15 @@ class Request
         $firstTrustedIp = null;
 
         foreach ($clientIps as $key => $clientIp) {
-            if (strpos($clientIp, '.')) {
-                // Strip :port from IPv4 addresses. This is allowed in Forwarded
-                // and may occur in X-Forwarded-For.
-                $i = strpos($clientIp, ':');
-                if ($i) {
-                    $clientIps[$key] = $clientIp = substr($clientIp, 0, $i);
-                }
-            } elseif (str_starts_with($clientIp, '[')) {
+            if (str_starts_with($clientIp, '[')) {
                 // Strip brackets and :port from IPv6 addresses.
                 $i = strpos($clientIp, ']', 1);
                 $clientIps[$key] = $clientIp = substr($clientIp, 1, $i - 1);
+            } elseif (strpos($clientIp, '.') && 1 === substr_count($clientIp, ':')) {
+                // Strip :port from IPv4 addresses. This is allowed in Forwarded
+                // and may occur in X-Forwarded-For. An IPv6 address with an
+                // embedded IPv4 address has at least two colons and is kept.
+                $clientIps[$key] = $clientIp = strstr($clientIp, ':', true);
             }
 
             if (!filter_var($clientIp, \FILTER_VALIDATE_IP)) {
@@ -2238,11 +2286,6 @@ class Request
 
         // use preg_replace() instead of preg_match() to prevent DoS attacks with long host names
         return '' === preg_replace('/[-a-zA-Z0-9_]++\.?/', '', $host);
-    }
-
-    private static function setProperty(self $request, string $name, mixed $value): void
-    {
-        $request->$name = $value;
     }
 
     /**

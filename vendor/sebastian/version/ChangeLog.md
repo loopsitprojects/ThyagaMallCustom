@@ -2,6 +2,18 @@
 
 All notable changes are documented in this file using the [Keep a CHANGELOG](https://keepachangelog.com/) principles.
 
+## [6.0.2] - 2026-11-09
+
+### Fixed
+
+* The version string for a release series (`X.Y`) ends with the name of a tag instead of the abbreviated hash of `HEAD` when `HEAD` is tagged
+
+## [6.0.1] - 2026-10-04
+
+### Fixed
+
+* The version string is derived from a tag of an older release series when several such tags are merged into the branch after its most recent release
+
 ## [6.0.0] - 2025-02-07
 
 ### Removed
@@ -60,6 +72,8 @@ All notable changes are documented in this file using the [Keep a CHANGELOG](htt
 
 * This component is no longer supported on PHP 7.1 and PHP 7.2
 
+[6.0.2]: https://github.com/sebastianbergmann/version/compare/6.0.1...6.0.2
+[6.0.1]: https://github.com/sebastianbergmann/version/compare/6.0.0...6.0.1
 [6.0.0]: https://github.com/sebastianbergmann/version/compare/5.0...6.0.0
 [5.0.2]: https://github.com/sebastianbergmann/version/compare/5.0.1...5.0.2
 [5.0.1]: https://github.com/sebastianbergmann/version/compare/5.0.0...5.0.1

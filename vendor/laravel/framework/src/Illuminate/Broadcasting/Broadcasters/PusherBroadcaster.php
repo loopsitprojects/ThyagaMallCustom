@@ -133,7 +133,7 @@ class PusherBroadcaster extends Broadcaster
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  mixed  $response
-     * @return array
+     * @return array|\Illuminate\Http\JsonResponse
      */
     protected function decodePusherResponse($request, $response)
     {
@@ -161,11 +161,16 @@ class PusherBroadcaster extends Broadcaster
 
         $parameters = $socket !== null ? ['socket_id' => $socket] : [];
 
-        $channels = new Collection($this->formatChannels($channels));
+        [$encryptedChannels, $channels] = (new Collection($this->formatChannels($channels)))
+            ->partition(fn ($channel) => str_starts_with($channel, 'private-encrypted-'));
 
         try {
             $channels->chunk(100)->each(function ($channels) use ($event, $payload, $parameters) {
-                $this->pusher->trigger($channels->toArray(), $event, $payload, $parameters);
+                $this->pusher->trigger($channels->values()->all(), $event, $payload, $parameters);
+            });
+
+            $encryptedChannels->each(function ($channel) use ($event, $payload, $parameters) {
+                $this->pusher->trigger([$channel], $event, $payload, $parameters);
             });
         } catch (ApiErrorException $e) {
             throw new BroadcastException(
