@@ -5,9 +5,7 @@ DirectoryIndex index.php index.html public/index.html public/index.php
 # Nothing outside public/ (app, config, vendor, .env, ...) is reachable from the web.
 <IfModule mod_rewrite.c>
     RewriteEngine On
-
-    # Diagnostic endpoints (temporary)
-    RewriteRule ^(test\.txt|test\.php)$ - [L]
+    RewriteBase /Thyaga/
 
     # Block access to .env and sensitive environment files
     RewriteRule ^\.env - [F,L,NC]

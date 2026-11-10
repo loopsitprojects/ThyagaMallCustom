@@ -1,5 +1,5 @@
 DirectoryIndex index.html index.php
-ErrorDocument 404 /thyaga/404.html
+ErrorDocument 404 /Thyaga/404.html
 
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
@@ -7,6 +7,7 @@ ErrorDocument 404 /thyaga/404.html
     </IfModule>
 
     RewriteEngine On
+    RewriteBase /Thyaga/public/
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
@@ -29,11 +30,11 @@ ErrorDocument 404 /thyaga/404.html
     RewriteRule ^ - [L]
 
     # 3. Dynamic Product detail route fallback
-    RewriteCond %{REQUEST_URI} ^/(thyaga|Thyaga|ThyagaMall)/product/ [NC]
+    RewriteCond %{REQUEST_URI} ^/(Thyaga|thyaga)/product/ [NC]
     RewriteRule ^product/[^/]+/?$ product/[slug]/index.html [L]
 
     # 4. Dynamic Order Success route fallback
-    RewriteCond %{REQUEST_URI} (^/(thyaga|Thyaga|ThyagaMall))?/order-success [NC]
+    RewriteCond %{REQUEST_URI} (^/(Thyaga|thyaga))?/order-success [NC]
     RewriteRule ^order-success(/.*)?$ order-success/index.html [L]
 
     # 5. Fallback clean URLs (.html extension)
@@ -44,7 +45,7 @@ ErrorDocument 404 /thyaga/404.html
     RewriteCond %{REQUEST_FILENAME}/index.html -f
     RewriteRule ^(.*)$ $1/index.html [L]
 
-    # 7. Fallback to Laravel for any other route
+    # 7. Fallback to Laravel front controller
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^ index.php [L]
