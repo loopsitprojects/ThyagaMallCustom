@@ -33,4 +33,17 @@ return [
     |--------------------------------------------------------------------------
     */
     'timeout' => (int) env('THYAGA_VOUCHER_TIMEOUT', 15),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Merchant Waybill / Dispatch Settings
+    |--------------------------------------------------------------------------
+    | Default values for merchant collection orders & waybills.
+    */
+    'waybill' => [
+        'store_address' => env('WAYBILL_STORE_ADDRESS', 'No.2 Sulaiman Terrace, Colombo 5'),
+        'dispatch_contact' => env('WAYBILL_DISPATCH_CONTACT', 'JOY- 0710982629'),
+        'default_delivery_date' => env('WAYBILL_DELIVERY_DATE', 'Within 24 hours'),
+        'default_delivery_address' => env('WAYBILL_DELIVERY_ADDRESS', 'THYAGA OFFICE'),
+    ],
 ];

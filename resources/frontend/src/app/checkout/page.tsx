@@ -28,8 +28,8 @@ import {
   Store,
   MapPin,
 } from 'lucide-react';
-import { ThyagaVoucherDetails, ThyagaRedemption } from '@/types';
-import { STORE_PICKUP, type DeliveryMethod } from '@/utils/shipping';
+import { ThyagaVoucherDetails, ThyagaRedemption, StorePickup } from '@/types';
+import { type DeliveryMethod } from '@/utils/shipping';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -46,7 +46,21 @@ export default function CheckoutPage() {
   } = useCart();
 
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('delivery');
-  const isPickup = deliveryMethod === 'pickup';
+  // The pickup store set in Admin → Store Pickup; null hides the option.
+  const [storePickup, setStorePickup] = useState<StorePickup | null>(null);
+  const isPickup = deliveryMethod === 'pickup' && storePickup !== null;
+
+  useEffect(() => {
+    let cancelled = false;
+    api.getStorePickup()
+      .then((res) => {
+        if (!cancelled) setStorePickup(res.success ? res.data : null);
+      })
+      .catch((err) => console.error('Failed to load store pickup details:', err));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   // Store pickup has no delivery charge (the server applies the same rule).
   const orderShippingFee = isPickup ? 0 : shippingFee;
 
@@ -307,7 +321,7 @@ export default function CheckoutPage() {
         customer_name: formData.customer_name,
         customer_email: formData.customer_email,
         customer_phone: formData.customer_phone,
-        delivery_method: deliveryMethod,
+        delivery_method: (isPickup ? 'pickup' : 'delivery') as DeliveryMethod,
         ...(isPickup
           ? {}
           : {
@@ -464,6 +478,7 @@ export default function CheckoutPage() {
               />
             </div>
 
+            {storePickup && (
             <div>
               <span className="block text-xs font-semibold text-gray-700 mb-1.5">How would you like to get your order? *</span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" role="radiogroup" aria-label="Delivery method">
@@ -478,7 +493,7 @@ export default function CheckoutPage() {
                     value: 'pickup',
                     icon: Store,
                     title: 'Store Pickup',
-                    detail: 'Free · collect from our Colombo 05 store',
+                    detail: `Free · collect from our ${storePickup.city} store`,
                   },
                 ] as const).map((option) => {
                   const Icon = option.icon;
@@ -510,16 +525,23 @@ export default function CheckoutPage() {
                 })}
               </div>
             </div>
+            )}
 
             {isPickup ? (
               <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-xs text-emerald-900">
                 <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 <div className="space-y-0.5">
-                  <strong className="block font-bold">{STORE_PICKUP.name}</strong>
-                  <span className="block">{STORE_PICKUP.address}</span>
-                  <span className="block text-[11px] text-emerald-800">
-                    We&apos;ll call you on the number above when your order is ready to collect. Please bring your order number.
-                  </span>
+                  <strong className="block font-bold">{storePickup.name}</strong>
+                  <span className="block">{storePickup.address}, {storePickup.city}</span>
+                  {storePickup.opening_hours && (
+                    <span className="block text-[11px] text-emerald-800">Open: {storePickup.opening_hours}</span>
+                  )}
+                  {storePickup.phone && (
+                    <span className="block text-[11px] text-emerald-800">Store phone: {storePickup.phone}</span>
+                  )}
+                  {storePickup.instructions && (
+                    <span className="block text-[11px] text-emerald-800 pt-0.5">{storePickup.instructions}</span>
+                  )}
                 </div>
               </div>
             ) : (
