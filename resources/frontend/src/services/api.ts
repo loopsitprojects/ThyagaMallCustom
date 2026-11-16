@@ -29,6 +29,7 @@ import {
   ReviewSummary,
   OrderEmailRecipient,
   MerchantWaybill,
+  CourierTracking,
 } from '@/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001/api';
@@ -749,6 +750,10 @@ export const api = {
 
   async getOrder(orderNumber: string): Promise<{ success: boolean; data: Order }> {
     return fetcher(`/orders/${orderNumber}`);
+  },
+
+  async trackConsignment(trackingNumber: string): Promise<{ success: boolean; data: CourierTracking }> {
+    return fetcher(`/tracking/${encodeURIComponent(trackingNumber)}`);
   },
 
   // Admin APIs

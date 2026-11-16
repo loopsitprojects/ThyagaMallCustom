@@ -35,4 +35,19 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Prompt Xpress Courier
+    |--------------------------------------------------------------------------
+    | Consignment tracking (https://api.promptxpress.net). Status lookups are
+    | public; the credentials are optional and only used if the API requires them.
+    */
+    'promptxpress' => [
+        'base_url' => env('PROMPTXPRESS_BASE_URL', 'https://api.promptxpress.net'),
+        'user_id' => env('PROMPTXPRESS_USER_ID'),
+        'password' => env('PROMPTXPRESS_PASSWORD'),
+        'timeout' => (int) env('PROMPTXPRESS_TIMEOUT', 10),
+        'cache_seconds' => (int) env('PROMPTXPRESS_CACHE_SECONDS', 60),
+    ],
+
 ];

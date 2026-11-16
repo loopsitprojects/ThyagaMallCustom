@@ -231,6 +231,19 @@ export interface Order {
   items?: OrderItem[];
 }
 
+export interface CourierTrackingEvent {
+  status: string;
+  branch_name: string;
+  /** ISO timestamp with Sri Lanka offset, e.g. "2026-11-14T12:40:28+05:30" */
+  status_date: string | null;
+}
+
+export interface CourierTracking {
+  tracking_number: string;
+  courier: string;
+  events: CourierTrackingEvent[];
+}
+
 export interface CartItem {
   product: Product;
   quantity: number;

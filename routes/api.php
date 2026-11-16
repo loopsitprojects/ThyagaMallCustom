@@ -13,27 +13,28 @@ use App\Http\Controllers\Api\Admin\AdminHomeSectionController;
 use App\Http\Controllers\Api\Admin\AdminMerchantController;
 use App\Http\Controllers\Api\Admin\AdminNewsletterController;
 use App\Http\Controllers\Api\Admin\AdminOnboardingAdController;
-use App\Http\Controllers\Api\Admin\AdminStorePickupController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminProductController;
 use App\Http\Controllers\Api\Admin\AdminRestockRequestController;
 use App\Http\Controllers\Api\Admin\AdminReviewController;
 use App\Http\Controllers\Api\Admin\AdminStaffController;
+use App\Http\Controllers\Api\Admin\AdminStorePickupController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\CourierTrackingController;
 use App\Http\Controllers\Api\CustomerAuthController;
 use App\Http\Controllers\Api\FlashSaleController;
 use App\Http\Controllers\Api\HeroSlideController;
 use App\Http\Controllers\Api\HomeSectionController;
 use App\Http\Controllers\Api\NewsletterController;
 use App\Http\Controllers\Api\OnboardingAdController;
-use App\Http\Controllers\Api\StorePickupController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\Payment\WebxpayController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductReviewController;
 use App\Http\Controllers\Api\RestockRequestController;
+use App\Http\Controllers\Api\StorePickupController;
 use App\Http\Controllers\Api\ThyagaVoucherController;
 use App\Http\Controllers\Api\VoucherController;
 use App\Models\HomeSectionProduct;
@@ -129,6 +130,9 @@ Route::prefix('orders')->group(function () {
     Route::post('/', [OrderController::class, 'store'])->middleware('throttle:10,1');
     Route::get('/{order_number}', [OrderController::class, 'show'])->middleware('throttle:30,1');
 });
+
+// Courier (Prompt Xpress) consignment tracking
+Route::get('/tracking/{trackingNumber}', [CourierTrackingController::class, 'show'])->middleware('throttle:30,1');
 
 // WebXpay Payment Gateway Endpoints
 Route::prefix('payment/webxpay')->group(function () {
