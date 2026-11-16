@@ -33,7 +33,7 @@ class PromptXpressService
     }
 
     /**
-     * Normalise a customer-entered tracking number (e.g. " rp 2475 0782 " to "RP24750782").
+     * Normalise a customer-entered tracking number (e.g. " rp 1234 5678 " to "RP12345678").
      * Returns null when the value cannot be a Prompt Xpress tracking number.
      */
     public static function normaliseTrackingNumber(string $input): ?string

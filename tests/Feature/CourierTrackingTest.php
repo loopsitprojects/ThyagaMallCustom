@@ -8,7 +8,7 @@ use Tests\TestCase;
 
 class CourierTrackingTest extends TestCase
 {
-    private const HISTORY_URL = 'api.promptxpress.net/packagestatus/getpackagestatusAll/RP24750782';
+    private const HISTORY_URL = 'api.promptxpress.net/packagestatus/getpackagestatusAll/RP12345678';
 
     /**
      * Status history in the exact shape Prompt Xpress returns (oldest first, no time-zone offset).
@@ -18,9 +18,9 @@ class CourierTrackingTest extends TestCase
     private function courierHistory(): array
     {
         return [
-            ['trackingNo' => 'RP24750782', 'branchName' => 'Panchikawatta', 'status' => 'Consignment Recieved', 'statusDate' => '2026-11-13T18:31:37.373'],
-            ['trackingNo' => 'RP24750782', 'branchName' => 'Panchikawatta', 'status' => 'In Transit', 'statusDate' => '2026-11-13T19:29:48'],
-            ['trackingNo' => 'RP24750782', 'branchName' => 'Head Office', 'status' => 'In Transit', 'statusDate' => '2026-11-14T01:38:16'],
+            ['trackingNo' => 'RP12345678', 'branchName' => 'Panchikawatta', 'status' => 'Consignment Recieved', 'statusDate' => '2026-11-13T18:31:37.373'],
+            ['trackingNo' => 'RP12345678', 'branchName' => 'Panchikawatta', 'status' => 'In Transit', 'statusDate' => '2026-11-13T19:29:48'],
+            ['trackingNo' => 'RP12345678', 'branchName' => 'Head Office', 'status' => 'In Transit', 'statusDate' => '2026-11-14T01:38:16'],
         ];
     }
 
@@ -29,12 +29,12 @@ class CourierTrackingTest extends TestCase
         Http::preventStrayRequests();
         Http::fake([self::HISTORY_URL => Http::response($this->courierHistory())]);
 
-        $this->getJson('/api/tracking/RP24750782')
+        $this->getJson('/api/tracking/RP12345678')
             ->assertOk()
             ->assertExactJson([
                 'success' => true,
                 'data' => [
-                    'tracking_number' => 'RP24750782',
+                    'tracking_number' => 'RP12345678',
                     'courier' => 'Prompt Xpress',
                     'events' => [
                         ['status' => 'In Transit', 'branch_name' => 'Head Office', 'status_date' => '2026-11-14T01:38:16+05:30'],
@@ -50,11 +50,11 @@ class CourierTrackingTest extends TestCase
         Http::preventStrayRequests();
         Http::fake([self::HISTORY_URL => Http::response($this->courierHistory())]);
 
-        $this->getJson('/api/tracking/rp24750782')
+        $this->getJson('/api/tracking/rp12345678')
             ->assertOk()
-            ->assertJsonPath('data.tracking_number', 'RP24750782');
+            ->assertJsonPath('data.tracking_number', 'RP12345678');
 
-        Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/getpackagestatusAll/RP24750782'));
+        Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/getpackagestatusAll/RP12345678'));
     }
 
     public function test_it_rejects_an_invalid_tracking_number_without_calling_the_courier(): void
@@ -84,7 +84,7 @@ class CourierTrackingTest extends TestCase
         Http::preventStrayRequests();
         Http::fake([self::HISTORY_URL => Http::response('Server error', 500)]);
 
-        $this->getJson('/api/tracking/RP24750782')
+        $this->getJson('/api/tracking/RP12345678')
             ->assertStatus(502)
             ->assertJsonPath('success', false);
     }
@@ -94,8 +94,8 @@ class CourierTrackingTest extends TestCase
         Http::preventStrayRequests();
         Http::fake([self::HISTORY_URL => Http::response($this->courierHistory())]);
 
-        $this->getJson('/api/tracking/RP24750782')->assertOk();
-        $this->getJson('/api/tracking/RP24750782')->assertOk();
+        $this->getJson('/api/tracking/RP12345678')->assertOk();
+        $this->getJson('/api/tracking/RP12345678')->assertOk();
 
         Http::assertSentCount(1);
     }
@@ -113,7 +113,7 @@ class CourierTrackingTest extends TestCase
             self::HISTORY_URL => Http::response($this->courierHistory()),
         ]);
 
-        $this->getJson('/api/tracking/RP24750782')->assertOk();
+        $this->getJson('/api/tracking/RP12345678')->assertOk();
 
         Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/getpackagestatusAll/')
             && $request->hasHeader('Authorization', 'Bearer courier-token'));
@@ -125,9 +125,9 @@ class CourierTrackingTest extends TestCase
         Http::fake([self::HISTORY_URL => Http::response($this->courierHistory())]);
 
         for ($attempt = 0; $attempt < 30; $attempt++) {
-            $this->getJson('/api/tracking/RP24750782')->assertOk();
+            $this->getJson('/api/tracking/RP12345678')->assertOk();
         }
 
-        $this->getJson('/api/tracking/RP24750782')->assertTooManyRequests();
+        $this->getJson('/api/tracking/RP12345678')->assertTooManyRequests();
     }
 }
