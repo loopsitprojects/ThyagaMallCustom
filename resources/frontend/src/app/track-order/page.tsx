@@ -286,11 +286,7 @@ function TrackOrderContent() {
   return (
     <div className="max-w-3xl mx-auto my-10 space-y-6">
       <div className="bg-white rounded-2xl border border-gray-200/80 p-8 shadow-xs">
-        <h1 className="text-2xl font-black text-gray-900 mb-2">Track Your Order</h1>
-        <p className="text-xs text-gray-500 mb-6">
-          Enter your Thyaga Mall order number (e.g. <code>THY-20260923-ABCD</code>) or the courier tracking number from
-          your delivery SMS to check the latest delivery status.
-        </p>
+        <h1 className="text-2xl font-black text-gray-900 mb-6">Track Your Order</h1>
 
         <form onSubmit={handleSearch} className="flex gap-2 mb-6">
           <input
