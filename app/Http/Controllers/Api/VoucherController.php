@@ -21,7 +21,7 @@ class VoucherController extends Controller
         if (! $voucher) {
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid Thyaga voucher code. Please check and try again.',
+                'message' => 'Promo code not found. Please check and try again.',
             ], 422);
         }
 

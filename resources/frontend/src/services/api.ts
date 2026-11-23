@@ -34,6 +34,14 @@ import {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001/api';
 
+/** A failed API call, keeping the server's machine-readable error_code (e.g. "VOUCHER_NOT_FOUND"). */
+export class ApiError extends Error {
+  constructor(message: string, public code: string | null = null, public status: number = 0) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 async function fetcher<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
   const headers: Record<string, string> = {
@@ -50,7 +58,7 @@ async function fetcher<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   const json = await res.json();
   if (!res.ok || json.success === false) {
-    throw new Error(json.message || `Request failed with status ${res.status}`);
+    throw new ApiError(json.message || `Request failed with status ${res.status}`, json.error_code ?? null, res.status);
   }
 
   return json;

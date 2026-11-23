@@ -135,6 +135,11 @@ export default function CheckoutPage() {
       if (err) {
         setPaymentError(decodeURIComponent(err));
       }
+      // Gift voucher code handed over from the cart drawer
+      const voucher = params.get('voucher');
+      if (voucher && /^[A-Za-z0-9-]{4,40}$/.test(voucher)) {
+        setVoucherCodeInput(voucher.toUpperCase());
+      }
     }
   }, []);
 

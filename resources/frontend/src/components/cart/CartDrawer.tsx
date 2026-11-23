@@ -3,8 +3,9 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, Truck, Tag, CheckCircle2 } from 'lucide-react';
+import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, Truck, Tag, CheckCircle2, Gift } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { api, ApiError } from '@/services/api';
 import { getAssetUrl } from '@/utils/assets';
 
 export default function CartDrawer() {
@@ -28,22 +29,41 @@ export default function CartDrawer() {
   const [voucherInput, setVoucherInput] = useState('');
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
+  // A Thyāga gift voucher entered here: it can only be redeemed at checkout (OTP to the owner's phone).
+  const [giftVoucher, setGiftVoucher] = useState<{ code: string; amount: number } | null>(null);
 
   if (!isDrawerOpen) return null;
 
   const handleApplyVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!voucherInput.trim()) return;
+    const code = voucherInput.trim().toUpperCase();
     setIsApplying(true);
     setVoucherError(null);
+    setGiftVoucher(null);
 
-    const res = await applyVoucherCode(voucherInput.trim());
-    if (!res.success) {
-      setVoucherError(res.message);
-    } else {
+    const res = await applyVoucherCode(code);
+    if (res.success) {
       setVoucherInput('');
+      setIsApplying(false);
+      return;
     }
-    setIsApplying(false);
+
+    // Not a store promo code: check whether it is a Thyāga gift voucher.
+    try {
+      const gift = await api.getThyagaVoucherDetails(code);
+      if (gift.data) {
+        setGiftVoucher({ code, amount: gift.data.amount });
+      } else {
+        setVoucherError(res.message);
+      }
+    } catch (err) {
+      const isUnknownGiftVoucher = err instanceof ApiError && (err.code === 'VOUCHER_NOT_FOUND' || err.code === 'INVALID_VOUCHER_ID');
+      // Expired, used-up or inactive gift vouchers get Thyāga's own message; anything else is just an unknown code.
+      setVoucherError(err instanceof ApiError && err.code && !isUnknownGiftVoucher ? err.message : res.message);
+    } finally {
+      setIsApplying(false);
+    }
   };
 
   const progressPercent = Math.min(100, Math.round((subtotal / freeShippingThreshold) * 100));
@@ -212,9 +232,13 @@ export default function CartDrawer() {
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="Enter Thyaga Voucher (e.g. THYAGA500)"
+                      placeholder="Promo code or Thyāga gift voucher"
                       value={voucherInput}
-                      onChange={(e) => setVoucherInput(e.target.value)}
+                      onChange={(e) => {
+                        setVoucherInput(e.target.value);
+                        setGiftVoucher(null);
+                        setVoucherError(null);
+                      }}
                       className="flex-1 px-3 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-hidden focus:border-[#36135d] uppercase"
                     />
                     <button
@@ -227,6 +251,24 @@ export default function CartDrawer() {
                   </div>
                   {voucherError && (
                     <p className="text-[11px] text-red-600 font-medium">{voucherError}</p>
+                  )}
+                  {giftVoucher && (
+                    <div className="mt-1.5 rounded-lg border border-purple-200 bg-purple-50 p-2.5 text-[11px] text-[#36135d] space-y-2">
+                      <p className="flex items-start gap-1.5">
+                        <Gift className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span>
+                          <strong className="font-bold">Thyāga gift voucher worth Rs. {giftVoucher.amount.toLocaleString('en-US')}</strong>
+                          . Redeem it at checkout. We&apos;ll send a one-time code to the voucher owner&apos;s phone.
+                        </span>
+                      </p>
+                      <Link
+                        href={`/checkout?voucher=${encodeURIComponent(giftVoucher.code)}`}
+                        onClick={closeDrawer}
+                        className="inline-flex items-center gap-1 rounded-md bg-[#36135d] hover:bg-[#a7144c] px-3 py-1.5 font-bold text-white transition"
+                      >
+                        Redeem at checkout <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    </div>
                   )}
                 </form>
               )}
