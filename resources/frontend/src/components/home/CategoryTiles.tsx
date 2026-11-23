@@ -10,22 +10,16 @@ import CategoryIcon from '@/components/common/CategoryIcon';
 import { useCategories, categoryHref, categoryGradient } from '@/hooks/useCategories';
 import { getAssetUrl } from '@/utils/assets';
 
-// Columns per row, so the row is always filled whatever number of categories the admin features
-// (written out in full so Tailwind generates each class).
-const LAPTOP_COLUMNS = ['', 'lg:grid-cols-1', 'lg:grid-cols-2', 'lg:grid-cols-3', 'lg:grid-cols-4', 'lg:grid-cols-5', 'lg:grid-cols-6'];
-const WIDE_COLUMNS = ['', 'xl:grid-cols-1', 'xl:grid-cols-2', 'xl:grid-cols-3', 'xl:grid-cols-4', 'xl:grid-cols-5', 'xl:grid-cols-6', 'xl:grid-cols-7', 'xl:grid-cols-8'];
-
-function gridColumns(count: number): string {
-  // Up to 6 fit one laptop row; 7–8 split into two even-ish rows of 4.
-  const laptop = count <= 6 ? Math.max(count, 1) : 4;
-  const wide = Math.min(Math.max(count, 1), 8);
-  return `grid grid-cols-2 sm:grid-cols-3 ${LAPTOP_COLUMNS[laptop]} ${WIDE_COLUMNS[wide]} gap-3 sm:gap-3.5`;
-}
+// Wrapping rows with the last row centred, so any number of categories looks tidy:
+// 2 per row on phones, 3 on tablets, 4 on laptops and 6 on wide screens (gap 0.75rem / 0.875rem).
+const ROW_CLASS = 'flex flex-wrap justify-center gap-3 sm:gap-3.5';
+const TILE_WIDTH_CLASS =
+  'w-[calc((100%-0.75rem)/2)] sm:w-[calc((100%-2*0.875rem)/3)] lg:w-[calc((100%-3*0.875rem)/4)] xl:w-[calc((100%-5*0.875rem)/6)]';
 
 export default function CategoryTiles() {
   const { categories, isLoading } = useCategories();
-  // Categories marked "Show on homepage" in Admin → Categories, in their admin order.
-  const tiles = categories.filter((c) => c.is_featured);
+  // Every active main category, in the order set in Admin → Categories.
+  const tiles = categories;
 
   if (!isLoading && tiles.length === 0) return null;
 
@@ -50,17 +44,17 @@ export default function CategoryTiles() {
       </div>
 
       {isLoading ? (
-        <div className={gridColumns(6)}>
+        <div className={ROW_CLASS}>
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-44 rounded-2xl bg-gray-100 animate-pulse" />
+            <div key={i} className={`${TILE_WIDTH_CLASS} h-44 rounded-2xl bg-gray-100 animate-pulse`} />
           ))}
         </div>
       ) : (
-        <Stagger className={gridColumns(tiles.length)}>
+        <Stagger className={ROW_CLASS}>
           {tiles.map((cat) => {
             const { from, to } = categoryGradient(cat);
             return (
-              <StaggerItem key={cat.id}>
+              <StaggerItem key={cat.id} className={TILE_WIDTH_CLASS}>
                 <TiltCard max={12}>
                   <Link
                     href={categoryHref(cat)}
