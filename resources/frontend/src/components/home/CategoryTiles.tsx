@@ -10,6 +10,18 @@ import CategoryIcon from '@/components/common/CategoryIcon';
 import { useCategories, categoryHref, categoryGradient } from '@/hooks/useCategories';
 import { getAssetUrl } from '@/utils/assets';
 
+// Columns per row, so the row is always filled whatever number of categories the admin features
+// (written out in full so Tailwind generates each class).
+const LAPTOP_COLUMNS = ['', 'lg:grid-cols-1', 'lg:grid-cols-2', 'lg:grid-cols-3', 'lg:grid-cols-4', 'lg:grid-cols-5', 'lg:grid-cols-6'];
+const WIDE_COLUMNS = ['', 'xl:grid-cols-1', 'xl:grid-cols-2', 'xl:grid-cols-3', 'xl:grid-cols-4', 'xl:grid-cols-5', 'xl:grid-cols-6', 'xl:grid-cols-7', 'xl:grid-cols-8'];
+
+function gridColumns(count: number): string {
+  // Up to 6 fit one laptop row; 7–8 split into two even-ish rows of 4.
+  const laptop = count <= 6 ? Math.max(count, 1) : 4;
+  const wide = Math.min(Math.max(count, 1), 8);
+  return `grid grid-cols-2 sm:grid-cols-3 ${LAPTOP_COLUMNS[laptop]} ${WIDE_COLUMNS[wide]} gap-3 sm:gap-3.5`;
+}
+
 export default function CategoryTiles() {
   const { categories, isLoading } = useCategories();
   // Categories marked "Show on homepage" in Admin → Categories, in their admin order.
@@ -38,13 +50,13 @@ export default function CategoryTiles() {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-3.5">
-          {Array.from({ length: 8 }).map((_, i) => (
+        <div className={gridColumns(6)}>
+          {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-44 rounded-2xl bg-gray-100 animate-pulse" />
           ))}
         </div>
       ) : (
-        <Stagger className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-3.5">
+        <Stagger className={gridColumns(tiles.length)}>
           {tiles.map((cat) => {
             const { from, to } = categoryGradient(cat);
             return (

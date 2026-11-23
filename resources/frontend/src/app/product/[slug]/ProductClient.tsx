@@ -20,6 +20,7 @@ import {
   Heart,
 } from 'lucide-react';
 import OutOfStockBadge from '@/components/product/OutOfStockBadge';
+import ProductImageZoom from '@/components/product/ProductImageZoom';
 import RestockNotifyForm from '@/components/product/RestockNotifyForm';
 import { api } from '@/services/api';
 import { Product } from '@/types';
@@ -169,14 +170,10 @@ export default function ProductClient() {
       <div className="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-8 shadow-xs grid grid-cols-1 md:grid-cols-12 gap-8">
         {/* Left: Gallery & Zoom Preview */}
         <div className="md:col-span-6 flex flex-col gap-4">
-          <div className="relative w-full aspect-square bg-[#fbfbfe] rounded-xl border border-gray-200/80 overflow-hidden">
-            <Image
-              src={getAssetUrl(activeImage || product.primary_image || 'https://placehold.co/600x600/f3f4f6/36135d?text=Thyaga+Mall')}
-              alt={product.name}
-              fill
-              priority
-              className="object-contain p-6"
-            />
+          <ProductImageZoom
+            src={getAssetUrl(activeImage || product.primary_image || 'https://placehold.co/600x600/f3f4f6/36135d?text=Thyaga+Mall')}
+            alt={product.name}
+          >
             {product.stock_quantity <= 0 ? (
               <OutOfStockBadge className="top-4 left-4 text-xs px-2.5 py-1 rounded-md" />
             ) : discountPercent > 0 && (
@@ -185,7 +182,7 @@ export default function ProductClient() {
                 <span>-{discountPercent}% OFF</span>
               </div>
             )}
-          </div>
+          </ProductImageZoom>
 
           {/* Thumbnails */}
           {product.images && product.images.length > 1 && (
