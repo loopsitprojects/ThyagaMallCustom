@@ -28,10 +28,10 @@ class NotFoundPageTest extends TestCase
 
     public function test_unknown_page_shows_the_storefront_404_page_with_a_404_status(): void
     {
-        $response = $this->get('/this-page-does-not-exist');
-
-        $response->assertNotFound();
-        $this->assertStringContainsString('Storefront 404 marker', $response->baseResponse->getFile()->getContent());
+        $this->get('/this-page-does-not-exist')
+            ->assertNotFound()
+            ->assertHeader('Content-Type', 'text/html; charset=utf-8')
+            ->assertSee('Storefront 404 marker');
     }
 
     public function test_unknown_api_path_still_returns_json(): void

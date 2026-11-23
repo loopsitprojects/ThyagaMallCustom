@@ -26,5 +26,6 @@ Route::fallback(function (Request $request) {
         abort(404);
     }
 
-    return response()->file($notFoundPage, ['Content-Type' => 'text/html; charset=utf-8'])->setStatusCode(404);
+    // Sent as a normal body: file responses drop their content when the status isn't 2xx.
+    return response(file_get_contents($notFoundPage), 404, ['Content-Type' => 'text/html; charset=utf-8']);
 })->where('fallbackPlaceholder', '^(?!api(/|$)).*');
