@@ -180,12 +180,26 @@ export default function CheckoutPage() {
       if (err) {
         setPaymentError(decodeURIComponent(err));
       }
-      // Gift voucher code handed over from the cart drawer
-      const voucher = params.get('voucher');
-      if (voucher && /^[A-Za-z0-9-]{4,40}$/.test(voucher)) {
-        setVoucherCodeInput(voucher.toUpperCase());
-      }
     }
+  }, []);
+
+  // "Redeem with Thyāga Voucher" in the cart: take the shopper straight to the voucher field.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('redeem') !== 'voucher') return;
+    let attempts = 0;
+    // The checkout form renders once the cart has loaded from storage, so wait for the field.
+    const timer = window.setInterval(() => {
+      const input = document.getElementById('thyaga-voucher-code');
+      attempts += 1;
+      if (input) {
+        window.clearInterval(timer);
+        document.getElementById('thyaga-voucher')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        input.focus({ preventScroll: true });
+      } else if (attempts > 20) {
+        window.clearInterval(timer);
+      }
+    }, 150);
+    return () => window.clearInterval(timer);
   }, []);
 
   if (items.length === 0) {
@@ -814,7 +828,7 @@ export default function CheckoutPage() {
             </div>
 
             {/* Interactive Thyāga Gift Voucher Redemption Section */}
-            <div className="pt-4 border-t border-gray-100 mb-4 space-y-3">
+            <div id="thyaga-voucher" className="pt-4 border-t border-gray-100 mb-4 space-y-3 scroll-mt-24">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
                   <Ticket className="w-4 h-4 text-[#a7144c]" />
@@ -1022,7 +1036,9 @@ export default function CheckoutPage() {
                 <form onSubmit={handleCheckVoucher} className="space-y-1.5">
                   <div className="flex gap-2">
                     <input
+                      id="thyaga-voucher-code"
                       type="text"
+                      aria-label="Thyāga gift voucher code"
                       placeholder="e.g. TYG82947192"
                       value={voucherCodeInput}
                       onChange={(e) => setVoucherCodeInput(e.target.value)}

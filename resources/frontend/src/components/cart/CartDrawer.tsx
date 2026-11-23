@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, Truck, CheckCircle2 } from 'lucide-react';
+import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, Truck, CheckCircle2, Ticket } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { getAssetUrl } from '@/utils/assets';
 
@@ -215,6 +215,16 @@ export default function CartDrawer() {
                 >
                   <span>Proceed to Checkout</span>
                   <ArrowRight className="w-4 h-4" />
+                </Link>
+
+                {/* Thyāga gift vouchers are redeemed at checkout (OTP to the voucher owner's phone) */}
+                <Link
+                  href="/checkout?redeem=voucher"
+                  onClick={closeDrawer}
+                  className="w-full border-2 border-[#36135d] text-[#36135d] hover:bg-[#36135d] hover:text-white py-2.5 px-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition cursor-pointer"
+                >
+                  <Ticket className="w-4 h-4" />
+                  <span>Redeem with Thyāga Voucher</span>
                 </Link>
 
                 <button
