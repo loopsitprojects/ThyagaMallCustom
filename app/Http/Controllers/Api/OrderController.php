@@ -7,6 +7,7 @@ use App\Jobs\SendOrderPlacedEmails;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\ThyagaVoucherHold;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Services\StorePickupSettings;
@@ -14,7 +15,6 @@ use App\Services\ThyagaVoucherService;
 use App\Services\WebxpayService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -104,22 +104,23 @@ class OrderController extends Controller
             $discount = 0.00;
             $voucherCode = null;
             $redemptionId = $validated['voucher_redemption_id'] ?? null;
+            $hold = null;
             $thyagaService = app(ThyagaVoucherService::class);
 
             if ($redemptionId) {
                 // The discount must come from a hold this server verified via OTP —
                 // never from an amount supplied by the browser. Each hold is single-use.
-                $heldAmount = Cache::pull(ThyagaVoucherController::holdCacheKey($redemptionId));
+                $hold = ThyagaVoucherHold::usable()->where('redemption_id', $redemptionId)->lockForUpdate()->first();
 
                 if (! $thyagaService->isConfigured()
-                    || $heldAmount === null
+                    || $hold === null
                     || ! $thyagaService->validateHoldStatus($redemptionId)) {
                     throw ValidationException::withMessages([
                         'voucher_redemption_id' => ['The Thyāga voucher hold has expired or is invalid. Please re-verify your voucher.'],
                     ]);
                 }
 
-                $discount = min($subtotal + $shippingFee, (float) $heldAmount);
+                $discount = min($subtotal + $shippingFee, (float) $hold->amount);
                 $voucherCode = $validated['voucher_code'] ?? 'THYAGA-VOUCHER';
             } elseif (! empty($validated['voucher_code'])) {
                 $voucher = Voucher::where('code', strtoupper(trim($validated['voucher_code'])))->first();
@@ -168,6 +169,10 @@ class OrderController extends Controller
                 'order_status' => 'pending',
                 'notes' => $validated['notes'] ?? null,
             ]);
+
+            if ($hold !== null) {
+                $hold->update(['status' => ThyagaVoucherHold::STATUS_USED, 'order_id' => $order->id]);
+            }
 
             foreach ($orderItemsData as $itemData) {
                 $itemData['order_id'] = $order->id;

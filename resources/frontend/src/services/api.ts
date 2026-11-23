@@ -422,7 +422,7 @@ export const api = {
     });
   },
 
-  async verifyThyagaOtp(redemptionId: string, amount: number, otp: string): Promise<{
+  async verifyThyagaOtp(redemptionId: string, amount: number, otp: string, voucherCode?: string): Promise<{
     success: boolean;
     data?: { redemptionId: string; status: string; amount: number };
     message: string;
@@ -430,8 +430,16 @@ export const api = {
   }> {
     return fetcher('/vouchers/thyaga/verify-otp', {
       method: 'POST',
-      body: JSON.stringify({ redemption_id: redemptionId, amount, otp }),
+      body: JSON.stringify({ redemption_id: redemptionId, amount, otp, voucher_code: voucherCode }),
     });
+  },
+
+  // A verified voucher hold that is still usable (to restore checkout after a refresh)
+  async getThyagaHold(redemptionId: string): Promise<{
+    success: boolean;
+    data: { redemption_id: string; voucher_code: string | null; amount: number; expires_at: string };
+  }> {
+    return fetcher(`/vouchers/thyaga/hold/${encodeURIComponent(redemptionId)}`);
   },
 
   async cancelThyagaRedemption(redemptionId: string): Promise<{

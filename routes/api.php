@@ -122,6 +122,7 @@ Route::prefix('vouchers/thyaga')->middleware('throttle:10,1')->group(function ()
     Route::post('/initiate', [ThyagaVoucherController::class, 'initiate']);
     Route::post('/verify-otp', [ThyagaVoucherController::class, 'verifyOtp']);
     Route::post('/cancel', [ThyagaVoucherController::class, 'cancel']);
+    Route::get('/hold/{redemptionId}', [ThyagaVoucherController::class, 'hold'])->where('redemptionId', '[A-Za-z0-9_\-]+');
 });
 
 Route::post('/newsletter/subscribe', [NewsletterController::class, 'subscribe'])->middleware('throttle:5,1');

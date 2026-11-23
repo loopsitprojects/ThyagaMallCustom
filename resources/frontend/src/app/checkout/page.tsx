@@ -31,6 +31,30 @@ import {
 import { ThyagaVoucherDetails, ThyagaRedemption, StorePickup } from '@/types';
 import { type DeliveryMethod } from '@/utils/shipping';
 
+// The verified Thyāga voucher hold for this browser tab, so a page refresh keeps the discount.
+const VOUCHER_HOLD_STORAGE_KEY = 'thyaga_voucher_hold';
+
+function rememberVoucherHold(redemption: ThyagaRedemption | null): void {
+  try {
+    if (redemption) {
+      sessionStorage.setItem(VOUCHER_HOLD_STORAGE_KEY, JSON.stringify(redemption));
+    } else {
+      sessionStorage.removeItem(VOUCHER_HOLD_STORAGE_KEY);
+    }
+  } catch {
+    // Storage unavailable (private mode): the hold is simply not restored after a refresh.
+  }
+}
+
+function rememberedVoucherHold(): ThyagaRedemption | null {
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(VOUCHER_HOLD_STORAGE_KEY) || 'null');
+    return stored && typeof stored.redemptionId === 'string' ? (stored as ThyagaRedemption) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -101,6 +125,27 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  // After a refresh, bring back a voucher hold verified earlier in this tab (no new OTP needed).
+  useEffect(() => {
+    const remembered = rememberedVoucherHold();
+    if (!remembered) return;
+    let cancelled = false;
+    api.getThyagaHold(remembered.redemptionId)
+      .then((res) => {
+        if (cancelled) return;
+        setThyagaRedemption({ ...remembered, amount: Number(res.data.amount) });
+        setVoucherStep('applied');
+        setVoucherMessage({ text: 'Your Thyāga voucher is still applied.', isError: false });
+      })
+      .catch(() => {
+        // Expired, used or released: forget it; the customer can redeem the voucher again.
+        if (!cancelled) rememberVoucherHold(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // OTP resend cooldown timer
   useEffect(() => {
@@ -258,9 +303,11 @@ export default function CheckoutPage() {
       const res = await api.verifyThyagaOtp(
         thyagaRedemption.redemptionId,
         thyagaRedemption.amount,
-        otpValue.trim()
+        otpValue.trim(),
+        thyagaRedemption.voucherCode
       );
       if (res.success && res.data) {
+        rememberVoucherHold(thyagaRedemption);
         setVoucherStep('applied');
         setVoucherMessage({
           text: `Thyāga Voucher applied! Saved Rs. ${thyagaRedemption.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
@@ -299,6 +346,7 @@ export default function CheckoutPage() {
 
   // 5. Cancel / Release Voucher
   const handleCancelThyagaVoucher = async () => {
+    rememberVoucherHold(null);
     if (thyagaRedemption?.redemptionId) {
       try {
         await api.cancelThyagaRedemption(thyagaRedemption.redemptionId);
@@ -348,6 +396,7 @@ export default function CheckoutPage() {
 
       const res = await api.createOrder(orderPayload);
       if (res.success && res.data) {
+        rememberVoucherHold(null);
         clearCart();
         if (typeof window !== 'undefined') {
           try {

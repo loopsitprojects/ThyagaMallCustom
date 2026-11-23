@@ -3,30 +3,18 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ThyagaVoucherHold;
 use App\Services\ThyagaVoucherService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 class ThyagaVoucherController extends Controller
 {
     protected ThyagaVoucherService $service;
 
-    /** How long a verified voucher hold can be used to place an order. */
-    protected const HOLD_TTL_MINUTES = 30;
-
     public function __construct(ThyagaVoucherService $service)
     {
         $this->service = $service;
-    }
-
-    /**
-     * Cache key holding the amount this server verified for a redemption.
-     * OrderController reads it so the discount can't be set by the browser.
-     */
-    public static function holdCacheKey(string $redemptionId): string
-    {
-        return 'thyaga_hold:'.hash('sha256', $redemptionId);
     }
 
     /**
@@ -105,6 +93,7 @@ class ThyagaVoucherController extends Controller
             'redemption_id' => ['required', 'string', 'max:128', 'regex:/^[A-Za-z0-9_\-]+$/'],
             'amount' => 'required|numeric|min:0.01',
             'otp' => 'required|string|min:4|max:10',
+            'voucher_code' => 'nullable|string|max:64',
         ]);
 
         $result = $this->service->verifyOtpAndHold(
@@ -114,10 +103,15 @@ class ThyagaVoucherController extends Controller
         );
 
         if ($result['success']) {
-            Cache::put(
-                self::holdCacheKey($validated['redemption_id']),
-                (float) ($result['data']['amount'] ?? $validated['amount']),
-                now()->addMinutes(self::HOLD_TTL_MINUTES)
+            // The order reads the amount from here, so the discount can't be set by the browser.
+            ThyagaVoucherHold::updateOrCreate(
+                ['redemption_id' => $validated['redemption_id']],
+                [
+                    'voucher_code' => isset($validated['voucher_code']) ? strtoupper(trim($validated['voucher_code'])) : null,
+                    'amount' => (float) ($result['data']['amount'] ?? $validated['amount']),
+                    'status' => ThyagaVoucherHold::STATUS_HELD,
+                    'expires_at' => now()->addMinutes(ThyagaVoucherHold::LIFETIME_MINUTES),
+                ],
             );
         }
 
@@ -147,13 +141,42 @@ class ThyagaVoucherController extends Controller
         ]);
 
         $result = $this->service->cancelRedemption($validated['redemption_id']);
-        Cache::forget(self::holdCacheKey($validated['redemption_id']));
+
+        ThyagaVoucherHold::where('redemption_id', $validated['redemption_id'])
+            ->where('status', ThyagaVoucherHold::STATUS_HELD)
+            ->update(['status' => ThyagaVoucherHold::STATUS_RELEASED, 'released_at' => now()]);
 
         return response()->json([
             'success' => $result['success'],
             'message' => $result['success'] ? 'Voucher reservation cancelled successfully.' : $result['message'],
             'data' => $result['data'] ?? null,
         ], $result['success'] ? 200 : ($result['status_code'] ?? 400));
+    }
+
+    /**
+     * A verified hold that can still be used, so checkout can restore the discount after a page refresh.
+     * GET /api/vouchers/thyaga/hold/{redemptionId}
+     */
+    public function hold(string $redemptionId): JsonResponse
+    {
+        $hold = ThyagaVoucherHold::usable()->where('redemption_id', $redemptionId)->first();
+
+        if (! $hold || ! $this->service->validateHoldStatus($hold->redemption_id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This voucher reservation has expired. Please redeem the voucher again.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'redemption_id' => $hold->redemption_id,
+                'voucher_code' => $hold->voucher_code,
+                'amount' => (float) $hold->amount,
+                'expires_at' => $hold->expires_at->toIso8601String(),
+            ],
+        ]);
     }
 
     /**

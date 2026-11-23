@@ -2,13 +2,12 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\Api\ThyagaVoucherController;
 use App\Models\Admin;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ThyagaVoucherHold;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -147,7 +146,7 @@ class SecurityTest extends TestCase
     {
         config(['thyaga.api_key' => 'test-key', 'thyaga.mode' => 'live', 'thyaga.endpoints.live' => 'https://thyaga.test/api']);
         Http::fake(['thyaga.test/*' => Http::response(['status' => 'OK'])]);
-        Cache::put(ThyagaVoucherController::holdCacheKey('red-1'), 1000.0, now()->addMinutes(5));
+        ThyagaVoucherHold::factory()->create(['redemption_id' => 'red-1', 'amount' => 1000]);
 
         $payload = $this->orderPayload($this->product(), [
             'payment_method' => 'voucher_cod', 'voucher_redemption_id' => 'red-1', 'voucher_amount' => 999999,

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Order;
+use App\Models\ThyagaVoucherHold;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -380,6 +381,9 @@ class ThyagaVoucherService
         $result = $this->cancelRedemption($order->voucher_redemption_id);
 
         if ($result['success']) {
+            ThyagaVoucherHold::where('redemption_id', $order->voucher_redemption_id)
+                ->update(['status' => ThyagaVoucherHold::STATUS_RELEASED, 'released_at' => now()]);
+
             $order->update([
                 'notes' => trim(($order->notes ? $order->notes."\n" : '').'[Thyāga voucher hold released: payment failed]'),
             ]);
