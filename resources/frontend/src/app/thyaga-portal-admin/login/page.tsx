@@ -83,7 +83,7 @@ export default function AdminLoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@thyaga.lk"
+                placeholder="Enter your admin email"
                 className="w-full pl-9 pr-3 py-2.5 text-xs border border-gray-300 rounded-xl focus:outline-hidden focus:border-[#36135d]"
               />
             </div>

@@ -10,11 +10,40 @@ import CategoryIcon from '@/components/common/CategoryIcon';
 import { useCategories, categoryHref, categoryGradient } from '@/hooks/useCategories';
 import { getAssetUrl } from '@/utils/assets';
 
-// Wrapping rows with the last row centred, so any number of categories looks tidy:
-// 2 per row on phones, 3 on tablets, 4 on laptops and 6 on wide screens (gap 0.75rem / 0.875rem).
+// Tiles wrap into rows that are as even as possible (10 tiles → 5 + 5, not 6 + 4), with any
+// shorter last row centred. Phones show 2 per row and tablets 3; laptops up to 5 and wide screens up to 6.
 const ROW_CLASS = 'flex flex-wrap justify-center gap-3 sm:gap-3.5';
-const TILE_WIDTH_CLASS =
-  'w-[calc((100%-0.75rem)/2)] sm:w-[calc((100%-2*0.875rem)/3)] lg:w-[calc((100%-3*0.875rem)/4)] xl:w-[calc((100%-5*0.875rem)/6)]';
+const BASE_WIDTH_CLASS = 'w-[calc((100%-0.75rem)/2)] sm:w-[calc((100%-2*0.875rem)/3)]';
+
+// Written out in full so Tailwind generates each class; index = tiles per row.
+const LAPTOP_WIDTH = [
+  '',
+  'lg:w-full',
+  'lg:w-[calc((100%-0.875rem)/2)]',
+  'lg:w-[calc((100%-2*0.875rem)/3)]',
+  'lg:w-[calc((100%-3*0.875rem)/4)]',
+  'lg:w-[calc((100%-4*0.875rem)/5)]',
+];
+const WIDE_WIDTH = [
+  '',
+  'xl:w-full',
+  'xl:w-[calc((100%-0.875rem)/2)]',
+  'xl:w-[calc((100%-2*0.875rem)/3)]',
+  'xl:w-[calc((100%-3*0.875rem)/4)]',
+  'xl:w-[calc((100%-4*0.875rem)/5)]',
+  'xl:w-[calc((100%-5*0.875rem)/6)]',
+];
+
+/** Tiles per row that fill the fewest rows as evenly as possible, e.g. 10 with max 6 → 5. */
+function evenPerRow(count: number, maxPerRow: number): number {
+  const tiles = Math.max(count, 1);
+  const rows = Math.ceil(tiles / maxPerRow);
+  return Math.ceil(tiles / rows);
+}
+
+function tileWidthClass(count: number): string {
+  return `${BASE_WIDTH_CLASS} ${LAPTOP_WIDTH[evenPerRow(count, 5)]} ${WIDE_WIDTH[evenPerRow(count, 6)]}`;
+}
 
 export default function CategoryTiles() {
   const { categories, isLoading } = useCategories();
@@ -46,7 +75,7 @@ export default function CategoryTiles() {
       {isLoading ? (
         <div className={ROW_CLASS}>
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className={`${TILE_WIDTH_CLASS} h-44 rounded-2xl bg-gray-100 animate-pulse`} />
+            <div key={i} className={`${tileWidthClass(6)} h-44 rounded-2xl bg-gray-100 animate-pulse`} />
           ))}
         </div>
       ) : (
@@ -54,7 +83,7 @@ export default function CategoryTiles() {
           {tiles.map((cat) => {
             const { from, to } = categoryGradient(cat);
             return (
-              <StaggerItem key={cat.id} className={TILE_WIDTH_CLASS}>
+              <StaggerItem key={cat.id} className={tileWidthClass(tiles.length)}>
                 <TiltCard max={12}>
                   <Link
                     href={categoryHref(cat)}
