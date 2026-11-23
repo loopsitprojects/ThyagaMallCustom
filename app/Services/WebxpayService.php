@@ -165,6 +165,7 @@ class WebxpayService
         ]);
 
         $orderNumber = null;
+        $signatureValid = false;
         $status = 'failed';
         $transactionId = null;
         $message = 'Payment could not be verified';
@@ -206,6 +207,8 @@ class WebxpayService
 
         return [
             'is_valid' => ($status === 'success'),
+            // True when WebXpay signed this result, so a "failed" status can be trusted too.
+            'is_signed' => $signatureValid,
             'status' => $status,
             'order_number' => $orderNumber ? (string) $orderNumber : null,
             'transaction_id' => $transactionId,

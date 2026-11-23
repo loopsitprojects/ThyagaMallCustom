@@ -89,12 +89,7 @@ class WebxpayController extends Controller
             ]);
 
             // Finalize / burn held Thyāga voucher if applied
-            if (! empty($order->voucher_redemption_id)) {
-                $voucherService = app(ThyagaVoucherService::class);
-                if ($voucherService->isConfigured()) {
-                    $voucherService->completeRedemption($order->voucher_redemption_id, $order->order_number);
-                }
-            }
+            app(ThyagaVoucherService::class)->completeForOrder($order);
 
             SendOrderPlacedEmails::dispatchAfterResponse($order);
 
@@ -105,6 +100,11 @@ class WebxpayController extends Controller
 
         // Failed, cancelled or unverifiable payment — leave the order untouched
         // (unsigned requests are attacker-controllable, so don't write their text to the order).
+        // Only a failure WebXpay signed releases the voucher hold, so forged requests can't cancel it.
+        if (($result['is_signed'] ?? false) && $order->payment_status === 'pending') {
+            app(ThyagaVoucherService::class)->releaseForOrder($order);
+        }
+
         Log::warning('WebXpay payment not confirmed', ['order_number' => $order->order_number, 'message' => $result['message']]);
 
         $failedUrl = $this->webxpayService->getFrontendRedirectUrl($order->order_number, false, $result['message']);

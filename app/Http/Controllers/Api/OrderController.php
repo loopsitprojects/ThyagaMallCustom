@@ -175,8 +175,8 @@ class OrderController extends Controller
             }
 
             // If order has a held Thyāga redemption and no online gateway pending (COD or fully paid by voucher), complete it immediately
-            if ($redemptionId && ! $isOnlinePayment && $thyagaService->isConfigured()) {
-                $thyagaService->completeRedemption($redemptionId, $order->order_number);
+            if ($redemptionId && ! $isOnlinePayment) {
+                $thyagaService->completeForOrder($order);
             }
 
             $responseData = [

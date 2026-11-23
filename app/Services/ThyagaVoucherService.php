@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Order;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -97,10 +98,10 @@ class ThyagaVoucherService
                 ];
             }
 
-            // Extract error message
-            $errorCode = $body['code'] ?? $body['message'] ?? $body['error'] ?? 'UNKNOWN_ERROR';
+            // Thyāga sends errors as problem+json with the code in "detail", e.g. {"detail": "VOUCHER_NOT_FOUND"}.
+            $errorCode = $this->errorCodeFrom(is_array($body) ? $body : []);
             $userMessage = self::ERROR_MESSAGES[$errorCode]
-                ?? ($body['message'] ?? $body['error'] ?? "Thyāga request failed (HTTP {$statusCode})");
+                ?? 'We could not process this Thyāga voucher right now. Please check the code and try again.';
 
             return [
                 'success' => false,
@@ -338,6 +339,72 @@ class ThyagaVoucherService
         ]);
 
         return $result;
+    }
+
+    /**
+     * Burn the voucher hold attached to a placed order. When Thyāga refuses, the order is
+     * flagged in its notes so staff can settle the discount with Thyāga manually.
+     */
+    public function completeForOrder(Order $order): bool
+    {
+        if (empty($order->voucher_redemption_id) || ! $this->isConfigured()) {
+            return false;
+        }
+
+        $result = $this->completeRedemption($order->voucher_redemption_id, $order->order_number);
+
+        if (! $result['success']) {
+            Log::error('Thyāga voucher could not be redeemed for a placed order', [
+                'order_number' => $order->order_number,
+                'error_code' => $result['error_code'] ?? null,
+            ]);
+
+            $order->update([
+                'notes' => trim(($order->notes ? $order->notes."\n" : '')
+                    .'[Thyāga voucher NOT redeemed ('.($result['error_code'] ?? 'error').'): settle the discount with Thyāga]'),
+            ]);
+        }
+
+        return $result['success'];
+    }
+
+    /**
+     * Release the voucher hold of an order whose online payment failed, so the customer gets the balance back.
+     */
+    public function releaseForOrder(Order $order): void
+    {
+        if (empty($order->voucher_redemption_id) || ! $this->isConfigured()) {
+            return;
+        }
+
+        $result = $this->cancelRedemption($order->voucher_redemption_id);
+
+        if ($result['success']) {
+            $order->update([
+                'notes' => trim(($order->notes ? $order->notes."\n" : '').'[Thyāga voucher hold released: payment failed]'),
+            ]);
+        }
+    }
+
+    /**
+     * The first known Thyāga error code in an error body, else the first code-like value.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    protected function errorCodeFrom(array $body): string
+    {
+        $candidates = array_filter(
+            [$body['detail'] ?? null, $body['code'] ?? null, $body['error'] ?? null, $body['message'] ?? null],
+            fn (mixed $value): bool => is_string($value) && $value !== '',
+        );
+
+        foreach ($candidates as $candidate) {
+            if (isset(self::ERROR_MESSAGES[$candidate])) {
+                return $candidate;
+            }
+        }
+
+        return reset($candidates) ?: 'UNKNOWN_ERROR';
     }
 
     /**
